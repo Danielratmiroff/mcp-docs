@@ -1,0 +1,14 @@
+Use backend folder
+use TypeScript 
+A library for generating embeddings, such as Transformers.js
+document files are in ai_docs folder
+
+Main Goal:
+Generate and Store Embeddings 🧠
+
+Tasks:
+Load the Model: In your script, use Transformers.js to load a pre-trained sentence-embedding model. This is an async operation. You'll create a "pipeline" for the feature-extraction task.
+
+Encode Descriptions Asynchronously: Create an async function that loops through your array of descriptions. For each description, call the model's pipeline to generate its vector embedding.
+
+Store in Memory: Store the resulting embeddings in a simple array (e.g., number[][]). Keep a separate, parallel array with the file metadata, ensuring the order is consistent.

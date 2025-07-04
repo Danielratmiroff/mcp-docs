@@ -1,0 +1,17 @@
+Use backend folder
+use Python
+A library for generating embeddings, such as Sentence-Transformers.
+A library for numerical operations and calculations, such as NumPy
+
+Main Goal:
+Build the Search Function 🔍
+Create the function that will perform the actual search.
+
+Tasks:
+1. Accept a Query: The function should take a plain text user query as its input.
+
+2. Encode the Query: Inside the function, use the exact same pre-trained model from Step 3 to convert the user's query into its own vector embedding.
+
+3. Calculate Similarity: Use a library like NumPy or SciPy to compute the cosine similarity between the user's query embedding and all the file description embeddings you have stored in your NumPy array. This will give you a similarity score for every file.
+
+4. Rank and Return: Sort the results to find the files with the highest similarity scores. Return the top N results (e.g., the top 5 or 10) for display.
