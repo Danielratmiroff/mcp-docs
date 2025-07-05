@@ -1,0 +1,16 @@
+Main Goal:
+#### Create a initialization function to set up our Model Context Protocol (MCP) 
+
+
+Tasks:
+1. Create a new tool for the AI to initialize the MCP set up server in "src/index.ts"
+2. The tool will create a new rule file in `.cursor/rules` named `always-mcp-doc-search.mdc`.
+3. In the front-matter, set  
+   ```yaml
+   ---
+   alwaysApply: true
+   ---
+   ```
+4. Rule description:  
+   "Cursor must always consult the MCP documentation corpus before any other source.  
+    If no relevant MCP doc is found, only then may alternate searches run."

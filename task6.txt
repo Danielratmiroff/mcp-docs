@@ -1,0 +1,21 @@
+Main Goal:
+#### Enforce MCP-First Documentation Search via Cursor Rule
+
+Tasks:
+1. Create a new rule file in `.cursor/rules` named `always-mcp-doc-search.mdc`.
+2. In the front-matter, set  
+   ```yaml
+   ---
+   alwaysApply: true
+   ---
+   ```
+3. Rule description:  
+   "Cursor must always consult the MCP documentation corpus before any other source.  
+   • If no relevant MCP doc is found, only then may alternate searches run.  
+   • Searches that skip MCP or ignore it should be rejected."
+4. Add default settings (if supported by the rule engine):  
+   • `mcp_search_required: true`  
+   • `fallback_to_web: false`  
+   • `auto_inject_rule: true`
+5. Update existing rule index / documentation so this rule is always loaded.
+6. Verify by running a sample query and confirming Cursor triggers an MCP search first.

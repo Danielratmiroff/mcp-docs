@@ -1,17 +1,10 @@
-Use backend folder
-use Python
-A library for generating embeddings, such as Sentence-Transformers.
-A library for numerical operations and calculations, such as NumPy
-
 Main Goal:
-Build the Search Function 🔍
-Create the function that will perform the actual search.
+#### Build the Asynchronous Search Function
 
-Tasks:
-1. Accept a Query: The function should take a plain text user query as its input.
-
-2. Encode the Query: Inside the function, use the exact same pre-trained model from Step 3 to convert the user's query into its own vector embedding.
-
-3. Calculate Similarity: Use a library like NumPy or SciPy to compute the cosine similarity between the user's query embedding and all the file description embeddings you have stored in your NumPy array. This will give you a similarity score for every file.
-
-4. Rank and Return: Sort the results to find the files with the highest similarity scores. Return the top N results (e.g., the top 5 or 10) for display.
+1. **Accept a Query:** Create an `async function` that takes the user's text query string as input.
+    
+2. **Encode the Query:** Inside the function, `await` the result of running the user's query through the same model pipeline to get its embedding.
+    
+3. **Calculate Similarity:** Use your math library (like `ml-distance`) to calculate the cosine similarity between the query embedding and every file embedding stored in your array.
+    
+4. **Rank and Return:** Combine the similarity scores with the file metadata, sort the list from highest to lowest score, and return the top results.

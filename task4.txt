@@ -1,0 +1,8 @@
+Main Goal:
+# Implement a read tool to read the documentation files
+
+Tasks:
+1. Create a function that reads the documentation files passed by the search tool
+2. Use the tool in the MCP server to read the documentation files
+
+

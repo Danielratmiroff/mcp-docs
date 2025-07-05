@@ -1,0 +1,8 @@
+Main Goal:
+#### Create a User Interface (MCP Server)
+
+1. **Use the MCP incoming Query from the user**
+    
+2. **Trigger the Search:** When the MCP receives a request, call your `async` search function from the previous step.
+
+3. **Return JSON:** Send the ranked list of results back to the MCP as a JSON response

@@ -3,6 +3,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { pipeline } from "@xenova/transformers";
+import { similarity } from "ml-distance";
 
 const server = new McpServer({
   name: "ai-docs-server",
@@ -11,56 +13,46 @@ const server = new McpServer({
 });
 
 const AI_DOCS_DIR = "ai_docs";
+const DATA_DIR = "data";
+const MODEL_NAME = "Xenova/all-MiniLM-L6-v2"; // TODO: is there a better model?
+const MIN_SIMILARITY_SCORE = 0.4;
 
-/**
- * Represents a single entry in the ai_documentation_index.json file.
- */
-interface DocumentationIndexEntry {
-  file: string;
-  title: string;
-  description: string;
-  keywords: string[];
+interface FileMetadata {
+  path: string;
 }
 
-/**
- * Reads and parses the documentation index JSON.
- */
-async function readDocumentationIndex(): Promise<DocumentationIndexEntry[]> {
-  const indexPath = path.join(AI_DOCS_DIR, "ai_documentation_index.json");
-  try {
-    const raw = await fs.readFile(indexPath, "utf-8");
-    return JSON.parse(raw) as DocumentationIndexEntry[];
-  } catch (error) {
-    // Silently ignore errors reading or parsing the index.
-    return [];
-  }
+async function loadJSON<T>(filePath: string): Promise<T> {
+  const fullPath = path.join(process.cwd(), filePath);
+  const data = await fs.readFile(fullPath, "utf-8");
+  return JSON.parse(data) as T;
 }
 
-/**
- * Performs a case-insensitive search over the documentation index.
- * It splits the query into words and checks if any of the words match.
- */
-async function searchDocumentationIndex(query: string): Promise<DocumentationIndexEntry[]> {
-  // Split the query into words and filter out empty words
-  const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (queryWords.length === 0) {
-    return [];
-  }
+async function search(query: string, topMatches = 5) {
+  const extractor = await pipeline("feature-extraction", MODEL_NAME);
+  const embeddings = await loadJSON<number[][]>(path.join(DATA_DIR, "embeddings.json"));
+  const metadata = await loadJSON<FileMetadata[]>(path.join(DATA_DIR, "file_metadata.json"));
 
-  const index = await readDocumentationIndex();
+  const queryEmbedding = await extractor(query, { pooling: "mean", normalize: true });
+  const queryVector = Array.from(queryEmbedding.data);
 
-  return index.filter(({ file, title, description, keywords }) => {
-    const searchableText = [file, title, description, ...keywords].join(" ").toLowerCase();
+  const similarities = embeddings.map((embedding) => similarity.cosine(queryVector, embedding));
 
-    return queryWords.some((word) => searchableText.includes(word));
-  });
+  const rankedResults = metadata
+    .map((meta, index) => ({
+      path: meta.path,
+      score: similarities[index],
+    }))
+    .sort((a, b) => b.score - a.score)
+    .filter((result) => result.score > MIN_SIMILARITY_SCORE);
+
+  return rankedResults.slice(0, topMatches);
 }
 
 // Placeholder (but functional) reader for documentation files
 async function readDocumentationFile(fileName: string): Promise<string> {
   try {
-    const filePath = path.join(AI_DOCS_DIR, fileName);
-    return await fs.readFile(filePath, "utf-8");
+    // Note: The path from metadata is absolute, so we use it directly.
+    return await fs.readFile(fileName, "utf-8");
   } catch (error) {
     // console.error(`Error reading documentation file '${fileName}':`, error);
     return "";
@@ -72,28 +64,13 @@ server.registerTool(
   "search-docs",
   {
     title: "Search AI Documentation",
-    description: `You MUST call this function before 'read-doc' to obtain the correct filename for the documentation you need.
-
-Selection Process:
-1. Analyzes the user's query to understand the subject.
-2. Returns the most relevant document(s) based on:
-- Title and filename similarity to the query.
-- Relevance of the description and keywords to the query's intent.
-
-Response Format:
-- Returns a ranked list of matching documentation files.
-- Each entry includes the filename (which can be used with the 'read-doc' tool), title, and description.
-- If no matches are found, it will state this clearly.
-
-For ambiguous queries, request clarification before proceeding with a best-guess match.`,
+    description: `You MUST call this function before 'read-doc' to obtain the correct filename for the documentation you need.\n\nSelection Process:\n1. Analyzes the user's query to understand the subject.\n2. Returns the most relevant document(s) based on semantic similarity.\n\nResponse Format:\n- Returns a ranked list of matching documentation files as a JSON object.\n- Each entry includes the 'path' and a similarity 'score'.\n- If no matches are found, it will state this clearly.`,
     inputSchema: {
-      query: z
-        .string()
-        .describe("Free-text search query. Matches are case-insensitive and checked against filename, title, description, and keywords."),
+      query: z.string().describe("Free-text search query for semantic matching."),
     },
   },
-  async ({ query }) => {
-    const matches = await searchDocumentationIndex(query);
+  async ({ query }: { query: string }, _extra) => {
+    const matches = await search(query);
     if (!matches.length) {
       return {
         content: [
@@ -105,15 +82,12 @@ For ambiguous queries, request clarification before proceeding with a best-guess
       };
     }
 
-    const resultText = matches
-      .map((m, idx) => `${idx + 1}. ${m.file} — ${m.title}\n   ${m.description}\n   keywords: ${m.keywords.join(", ")}`)
-      .join("\n\n");
-
+    const jsonString = JSON.stringify(matches, null, 2);
     return {
       content: [
         {
           type: "text",
-          text: `Relevant documentation files found (ordered by relevance):\n\n${resultText}`,
+          text: jsonString,
         },
       ],
     };
@@ -125,19 +99,19 @@ server.registerTool(
   {
     title: "Read AI Documentation File",
     description:
-      "Reads the content of a documentation file given its name. You MUST call 'search-docs' first to obtain the correct filename.",
+      "Reads the content of a documentation file given its full path. You MUST call 'search-docs' first to obtain the correct filePath.",
     inputSchema: {
-      fileName: z.string().describe("The name of the file to read from the AI_DOCS_DIR."),
+      filePath: z.string().describe("The full path of the file to read."),
     },
   },
-  async ({ fileName }) => {
-    const content = await readDocumentationFile(fileName);
+  async ({ filePath }) => {
+    const content = await readDocumentationFile(filePath);
     if (!content) {
       return {
         content: [
           {
             type: "text",
-            text: `Could not read file: '${fileName}'.`,
+            text: `Could not read file: '${filePath}'.`,
           },
         ],
       };
@@ -158,6 +132,34 @@ async function main() {
   await server.connect(transport);
   // console.error("AI Docs MCP Server running on stdio");
 }
+
+server.registerTool(
+  "init",
+  {
+    title: "Initialize MCP Server configuration",
+    description: "Creates the necessary rule files for the MCP documentation search and the data files for the MCP server.",
+    inputSchema: {},
+  },
+  async () => {
+    const rulesDir = path.join(process.cwd(), ".cursor", "rules");
+    await fs.mkdir(rulesDir, { recursive: true });
+    const ruleFilePath = path.join(rulesDir, "always-mcp-doc-search.mdc");
+    const ruleContent = `---
+alwaysApply: true
+---
+Cursor must always consult the MCP documentation corpus before any other source.
+If no relevant MCP doc is found, only then may alternate searches run.`;
+    await fs.writeFile(ruleFilePath, ruleContent);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully created ${ruleFilePath}`,
+        },
+      ],
+    };
+  }
+);
 
 main().catch((error) => {
   // console.error("Fatal error in main():", error);
