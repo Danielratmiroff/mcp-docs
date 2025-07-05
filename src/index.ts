@@ -46,6 +46,14 @@ async function extractEmbedding(content: string): Promise<number[]> {
   return Array.from(embedding.data);
 }
 
+function hasDeletedDocs(metadata: FileMetadata[], docFilePaths: string[]): boolean {
+  return metadata.some((meta) => !docFilePaths.includes(meta.path));
+}
+
+function hasNewDocs(metadata: FileMetadata[], docFilePaths: string[]): boolean {
+  return docFilePaths.some((p) => p.endsWith(".md") && !metadata.some((meta) => meta.path === p));
+}
+
 async function search(query: string, topMatches = 5) {
   const { embeddings, metadata } = await loadSearchIndex();
 
@@ -200,33 +208,64 @@ server.registerTool(
   "reindex-docs",
   {
     title: "Re-index AI Documentation",
-    description: "Updates the search index with any new documentation files.",
+    description: "Updates the search index with any new or deleted documentation files.",
     inputSchema: {},
   },
   async () => {
-    const { embeddings, metadata } = await loadSearchIndex();
+    let { embeddings, metadata } = await loadSearchIndex();
 
     const docFiles = await fs.readdir(AI_DOCS_DIR);
-    const newFiles = docFiles.filter((file) => file.endsWith(".md") && !metadata.some((meta) => meta.path.endsWith(file)));
+    const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f));
 
-    if (newFiles.length === 0) {
-      return {
-        content: [{ type: "text", text: "No new documents to index." }],
-      };
+    const deletionsExist = hasDeletedDocs(metadata, docFilePaths);
+    const additionsExist = hasNewDocs(metadata, docFilePaths);
+
+    if (!deletionsExist && !additionsExist) {
+      return { content: [{ type: "text", text: "No changes detected in documentation." }] };
     }
 
-    for (const file of newFiles) {
-      const filePath = path.join(AI_DOCS_DIR, file);
-      const content = await fs.readFile(filePath, "utf-8");
-      const embedding = await extractEmbedding(content);
-      embeddings.push(embedding);
-      metadata.push({ path: filePath });
+    let deletedCount = 0;
+    let addedCount = 0;
+
+    if (deletionsExist) {
+      // Remove embeddings/metadata that no longer exist
+      const survivingEmbeddings: number[][] = [];
+      const survivingMetadata: FileMetadata[] = [];
+
+      metadata.forEach((meta, index) => {
+        if (docFilePaths.includes(meta.path)) {
+          survivingMetadata.push(meta);
+          survivingEmbeddings.push(embeddings[index]);
+        } else {
+          deletedCount++;
+        }
+      });
+
+      embeddings = survivingEmbeddings;
+      metadata = survivingMetadata;
+    }
+
+    if (additionsExist) {
+      for (const filePath of docFilePaths) {
+        if (filePath.endsWith(".md") && !metadata.some((meta) => meta.path === filePath)) {
+          const content = await fs.readFile(filePath, "utf-8");
+          const embedding = await extractEmbedding(content);
+          embeddings.push(embedding);
+          metadata.push({ path: filePath });
+          addedCount++;
+        }
+      }
     }
 
     await saveSearchIndex(embeddings, metadata);
 
     return {
-      content: [{ type: "text", text: `Successfully indexed ${newFiles.length} new document(s).` }],
+      content: [
+        {
+          type: "text",
+          text: `Successfully indexed ${addedCount} new document(s) and removed ${deletedCount} deleted document(s).`,
+        },
+      ],
     };
   }
 );

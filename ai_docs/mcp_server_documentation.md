@@ -49,3 +49,9 @@ The MCP server exposes the following tools for interaction:
 - **Details:** This tool creates:
   1.  A rule file at `.cursor/rules/always-mcp-doc-search.mdc` to instruct Cursor to always consult this documentation first.
   2.  A `GEMINI.md` file with a similar rule for Gemini.
+
+### `reindex-docs`
+
+- **Purpose:** To synchronize the search index with the `ai_docs` folder. It handles both the addition of new files and the removal of deleted ones, ensuring the search results are always up-to-date.
+- **Input:** None.
+- **Output:** A confirmation message detailing how many documents were added and/or removed from the index.

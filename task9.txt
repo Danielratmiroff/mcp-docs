@@ -1,0 +1,7 @@
+Main Goal:
+Reindex the documentation when a file is deleted.
+
+Tasks:
+- Reindex the documentation when a file is deleted.
+- Use the reindex-docs tool to reindex the documentation.
+- Add the new functionality to our documentation. /ai_docs/mcp_server_documentation.md
