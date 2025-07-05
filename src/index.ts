@@ -16,6 +16,8 @@ const AI_DOCS_DIR = "ai_docs";
 const DATA_DIR = "data";
 const MODEL_NAME = "Xenova/all-MiniLM-L6-v2"; // TODO: is there a better model?
 const MIN_SIMILARITY_SCORE = 0.4;
+const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
+const METADATA_PATH = path.join(DATA_DIR, "file_metadata.json");
 
 interface FileMetadata {
   path: string;
@@ -27,13 +29,27 @@ async function loadJSON<T>(filePath: string): Promise<T> {
   return JSON.parse(data) as T;
 }
 
-async function search(query: string, topMatches = 5) {
-  const extractor = await pipeline("feature-extraction", MODEL_NAME);
-  const embeddings = await loadJSON<number[][]>(path.join(DATA_DIR, "embeddings.json"));
-  const metadata = await loadJSON<FileMetadata[]>(path.join(DATA_DIR, "file_metadata.json"));
+async function loadSearchIndex(): Promise<{ embeddings: number[][]; metadata: FileMetadata[] }> {
+  const embeddings = await loadJSON<number[][]>(EMBEDDINGS_PATH);
+  const metadata = await loadJSON<FileMetadata[]>(METADATA_PATH);
+  return { embeddings, metadata };
+}
 
-  const queryEmbedding = await extractor(query, { pooling: "mean", normalize: true });
-  const queryVector = Array.from(queryEmbedding.data);
+async function saveSearchIndex(embeddings: number[][], metadata: FileMetadata[]): Promise<void> {
+  await fs.writeFile(EMBEDDINGS_PATH, JSON.stringify(embeddings));
+  await fs.writeFile(METADATA_PATH, JSON.stringify(metadata));
+}
+
+async function extractEmbedding(content: string): Promise<number[]> {
+  const extractor = await pipeline("feature-extraction", MODEL_NAME);
+  const embedding = await extractor(content, { pooling: "mean", normalize: true });
+  return Array.from(embedding.data);
+}
+
+async function search(query: string, topMatches = 5) {
+  const { embeddings, metadata } = await loadSearchIndex();
+
+  const queryVector = await extractEmbedding(query);
 
   const similarities = embeddings.map((embedding) => similarity.cosine(queryVector, embedding));
 
@@ -176,6 +192,41 @@ server.registerTool(
           text: messages.join("\n"),
         },
       ],
+    };
+  }
+);
+
+server.registerTool(
+  "reindex-docs",
+  {
+    title: "Re-index AI Documentation",
+    description: "Updates the search index with any new documentation files.",
+    inputSchema: {},
+  },
+  async () => {
+    const { embeddings, metadata } = await loadSearchIndex();
+
+    const docFiles = await fs.readdir(AI_DOCS_DIR);
+    const newFiles = docFiles.filter((file) => file.endsWith(".md") && !metadata.some((meta) => meta.path.endsWith(file)));
+
+    if (newFiles.length === 0) {
+      return {
+        content: [{ type: "text", text: "No new documents to index." }],
+      };
+    }
+
+    for (const file of newFiles) {
+      const filePath = path.join(AI_DOCS_DIR, file);
+      const content = await fs.readFile(filePath, "utf-8");
+      const embedding = await extractEmbedding(content);
+      embeddings.push(embedding);
+      metadata.push({ path: filePath });
+    }
+
+    await saveSearchIndex(embeddings, metadata);
+
+    return {
+      content: [{ type: "text", text: `Successfully indexed ${newFiles.length} new document(s).` }],
     };
   }
 );

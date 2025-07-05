@@ -1,0 +1,38 @@
+  <context>
+  Currently, our server uses a static index (embeddings.json and file_metadata.json) for speed. When a new file is added to the ai_docs
+  folder, this index becomes outdated and the new content won't appear in search results.
+
+  A Manual `reindex` Tool: A better approach would be to create a new tool, let's call it reindex-docs. After you (or the AI) create a
+      new documentation file, you would call this tool. It would run the embedding generation process and update the embeddings.json and
+      file_metadata.json files.
+
+
+   * It keeps the search function fast. Search continues to use the pre-computed index.
+   * It gives you explicit control. You decide when to update the index, which is perfect if you're adding or modifying multiple files at
+     once.
+   * It fits the existing tool-based workflow.
+
+
+  The workflow would be:
+   1. Create a new file (e.g., ai_docs/new_feature.md).
+   2. Call the reindex-docs tool.
+   3. The new documentation is now searchable.
+</context>
+
+Main Goal:
+#### Create a reindex-docs tool to update the embeddings.json and file_metadata.json files when a new file is added to the ai_docs folder.
+
+Tasks:
+1. Create a new tool for the AI to reindex the documentation.
+2. The tool will run the embedding generation process and update the embeddings.json and file_metadata.json files.
+3. Refactor existing code to use the new tool.
+
+# Technical Requirements
+
+1. Do not regenerate the embeddings and metadata if the file is already in the embeddings.json and file_metadata.json files.
+load existing embeddings + metadata
+if newPath in metadata -> skip
+embedding = extractor(newDocText)
+append embedding
+append { path, title, description } to metadata
+write back both files

@@ -1,0 +1,14 @@
+
+Make sure to use the correct format for the documentation.
+Documentation should be a markdown file.
+Documentation should be concise, to the point and easy to understand. AI and human should be able to understand the documentation.
+Documentation should be in the ai_docs folder.
+
+Main Goal:
+#### Create documentation to understand the MCP server 
+
+Tasks:
+1. Create a documentation to understand the MCP server "index.ts"
+- Explain embeddings and how they are used to search the documentation.
+- Explain folder paths and structure.
+- Explain our tools and how they are used.
