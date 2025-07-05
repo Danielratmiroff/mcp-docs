@@ -48,13 +48,10 @@ async function search(query: string, topMatches = 5) {
   return rankedResults.slice(0, topMatches);
 }
 
-// Placeholder (but functional) reader for documentation files
 async function readDocumentationFile(fileName: string): Promise<string> {
   try {
-    // Note: The path from metadata is absolute, so we use it directly.
     return await fs.readFile(fileName, "utf-8");
   } catch (error) {
-    // console.error(`Error reading documentation file '${fileName}':`, error);
     return "";
   }
 }
@@ -127,10 +124,39 @@ server.registerTool(
   }
 );
 
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  // console.error("AI Docs MCP Server running on stdio");
+async function createCursorRule(): Promise<string> {
+  const rulesDir = path.join(process.cwd(), ".cursor", "rules");
+  await fs.mkdir(rulesDir, { recursive: true });
+  const ruleFilePath = path.join(rulesDir, "always-mcp-doc-search.mdc");
+  const cursorRuleContent = `---
+alwaysApply: true
+---
+Cursor must always consult the MCP documentation corpus before any other source.
+If no relevant MCP doc is found, only then may alternate searches run.`;
+  await fs.writeFile(ruleFilePath, cursorRuleContent);
+  return `Successfully created ${ruleFilePath}`;
+}
+
+async function createOrUpdateGeminiRule(): Promise<string> {
+  const geminiRuleTitle = "## AI Documentation MCP";
+  const geminiRuleBody =
+    "Gemini must always consult the MCP documentation corpus before any other source.\nIf no relevant MCP doc is found, only then may alternate searches run.";
+  const geminiFilePath = path.join(process.cwd(), "GEMINI.md");
+
+  let geminiFileContent = "";
+  try {
+    geminiFileContent = await fs.readFile(geminiFilePath, "utf-8");
+  } catch (error) {
+    // File doesn't exist, which is fine
+  }
+
+  if (geminiFileContent.includes(geminiRuleTitle)) {
+    return "GEMINI.md already contains the rule.";
+  } else {
+    const contentToAppend = (geminiFileContent ? "\n\n" : "") + `${geminiRuleTitle}\n${geminiRuleBody}`;
+    await fs.appendFile(geminiFilePath, contentToAppend);
+    return `Successfully updated ${geminiFilePath}`;
+  }
 }
 
 server.registerTool(
@@ -141,25 +167,24 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
-    const rulesDir = path.join(process.cwd(), ".cursor", "rules");
-    await fs.mkdir(rulesDir, { recursive: true });
-    const ruleFilePath = path.join(rulesDir, "always-mcp-doc-search.mdc");
-    const ruleContent = `---
-alwaysApply: true
----
-Cursor must always consult the MCP documentation corpus before any other source.
-If no relevant MCP doc is found, only then may alternate searches run.`;
-    await fs.writeFile(ruleFilePath, ruleContent);
+    const messages = await Promise.all([createCursorRule(), createOrUpdateGeminiRule()]);
+
     return {
       content: [
         {
           type: "text",
-          text: `Successfully created ${ruleFilePath}`,
+          text: messages.join("\n"),
         },
       ],
     };
   }
 );
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  // console.error("AI Docs MCP Server running on stdio");
+}
 
 main().catch((error) => {
   // console.error("Fatal error in main():", error);
