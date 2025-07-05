@@ -5,6 +5,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
 import { similarity } from "ml-distance";
+import { createHash } from "crypto";
 
 const server = new McpServer({
   name: "ai-docs-server",
@@ -21,12 +22,21 @@ const METADATA_PATH = path.join(DATA_DIR, "file_metadata.json");
 
 interface FileMetadata {
   path: string;
+  hash: string;
 }
 
 async function loadJSON<T>(filePath: string): Promise<T> {
   const fullPath = path.join(process.cwd(), filePath);
-  const data = await fs.readFile(fullPath, "utf-8");
-  return JSON.parse(data) as T;
+  try {
+    const data = await fs.readFile(fullPath, "utf-8");
+    return JSON.parse(data) as T;
+  } catch (error) {
+    // If the file doesn't exist, return an empty array
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [] as T;
+    }
+    throw error;
+  }
 }
 
 async function loadSearchIndex(): Promise<{ embeddings: number[][]; metadata: FileMetadata[] }> {
@@ -36,28 +46,31 @@ async function loadSearchIndex(): Promise<{ embeddings: number[][]; metadata: Fi
 }
 
 async function saveSearchIndex(embeddings: number[][], metadata: FileMetadata[]): Promise<void> {
-  await fs.writeFile(EMBEDDINGS_PATH, JSON.stringify(embeddings));
-  await fs.writeFile(METADATA_PATH, JSON.stringify(metadata));
+  const tempEmbeddingsPath = EMBEDDINGS_PATH + ".tmp";
+  const tempMetadataPath = METADATA_PATH + ".tmp";
+
+  await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddings));
+  await fs.writeFile(tempMetadataPath, JSON.stringify(metadata));
+
+  await fs.rename(tempEmbeddingsPath, EMBEDDINGS_PATH);
+  await fs.rename(tempMetadataPath, METADATA_PATH);
 }
 
-async function extractEmbedding(content: string): Promise<number[]> {
+async function extractEmbedding(content: string | string[]): Promise<number[][]> {
   const extractor = await pipeline("feature-extraction", MODEL_NAME);
-  const embedding = await extractor(content, { pooling: "mean", normalize: true });
-  return Array.from(embedding.data);
+  const embeddings = await extractor(content, { pooling: "mean", normalize: true });
+  return embeddings.tolist();
 }
 
-function hasDeletedDocs(metadata: FileMetadata[], docFilePaths: string[]): boolean {
-  return metadata.some((meta) => !docFilePaths.includes(meta.path));
-}
-
-function hasNewDocs(metadata: FileMetadata[], docFilePaths: string[]): boolean {
-  return docFilePaths.some((p) => p.endsWith(".md") && !metadata.some((meta) => meta.path === p));
+function getFileHash(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 async function search(query: string, topMatches = 5) {
   const { embeddings, metadata } = await loadSearchIndex();
 
-  const queryVector = await extractEmbedding(query);
+  const queryEmbedding = await extractEmbedding(query);
+  const queryVector = queryEmbedding[0];
 
   const similarities = embeddings.map((embedding) => similarity.cosine(queryVector, embedding));
 
@@ -204,69 +217,89 @@ server.registerTool(
   }
 );
 
+export async function reindexDocs(): Promise<{ content: { type: "text"; text: string }[] }> {
+  let { embeddings, metadata } = await loadSearchIndex();
+  const docFiles = await fs.readdir(AI_DOCS_DIR);
+  const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f));
+
+  let deletedCount = 0;
+  let modifiedCount = 0;
+  let addedCount = 0;
+
+  // Handle deletions and modifications
+  const survivingEmbeddings: number[][] = [];
+  const survivingMetadata: FileMetadata[] = [];
+  const modifiedFilesToProcess: { content: string; index: number }[] = [];
+
+  for (let i = 0; i < metadata.length; i++) {
+    const meta = metadata[i];
+    if (docFilePaths.includes(meta.path)) {
+      const content = await fs.readFile(meta.path, "utf-8");
+      const newHash = getFileHash(content);
+      if (meta.hash !== newHash) {
+        modifiedCount++;
+        modifiedFilesToProcess.push({ content, index: survivingMetadata.length });
+      }
+      survivingMetadata.push({ ...meta, hash: newHash });
+      survivingEmbeddings.push(embeddings[i]);
+    } else {
+      deletedCount++;
+    }
+  }
+
+  embeddings = survivingEmbeddings;
+  metadata = survivingMetadata;
+
+  // Process modified files in a batch
+  if (modifiedFilesToProcess.length > 0) {
+    const contents = modifiedFilesToProcess.map((f) => f.content);
+    const newEmbeddings = await extractEmbedding(contents);
+    modifiedFilesToProcess.forEach((file, i) => {
+      embeddings[file.index] = newEmbeddings[i];
+    });
+  }
+
+  // Handle additions
+  const newFiles = docFilePaths.filter((filePath) => filePath.endsWith(".md") && !metadata.some((meta) => meta.path === filePath));
+
+  if (newFiles.length > 0) {
+    addedCount = newFiles.length;
+    const contents = await Promise.all(newFiles.map((file) => fs.readFile(file, "utf-8")));
+    const newEmbeddings = await extractEmbedding(contents);
+
+    contents.forEach((content, i) => {
+      embeddings.push(newEmbeddings[i]);
+      metadata.push({ path: newFiles[i], hash: getFileHash(content) });
+    });
+  }
+
+  if (addedCount === 0 && deletedCount === 0 && modifiedCount === 0) {
+    return {
+      content: [{ type: "text", text: "No changes detected in documentation." }],
+    };
+  }
+
+  await saveSearchIndex(embeddings, metadata);
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).`,
+      },
+    ],
+  };
+}
+
 server.registerTool(
   "reindex-docs",
   {
     title: "Re-index AI Documentation",
-    description: "Updates the search index with any new or deleted documentation files.",
+    description: "Updates the search index with any new, modified, or deleted documentation files.",
     inputSchema: {},
   },
   async () => {
-    let { embeddings, metadata } = await loadSearchIndex();
-
-    const docFiles = await fs.readdir(AI_DOCS_DIR);
-    const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f));
-
-    const deletionsExist = hasDeletedDocs(metadata, docFilePaths);
-    const additionsExist = hasNewDocs(metadata, docFilePaths);
-
-    if (!deletionsExist && !additionsExist) {
-      return { content: [{ type: "text", text: "No changes detected in documentation." }] };
-    }
-
-    let deletedCount = 0;
-    let addedCount = 0;
-
-    if (deletionsExist) {
-      // Remove embeddings/metadata that no longer exist
-      const survivingEmbeddings: number[][] = [];
-      const survivingMetadata: FileMetadata[] = [];
-
-      metadata.forEach((meta, index) => {
-        if (docFilePaths.includes(meta.path)) {
-          survivingMetadata.push(meta);
-          survivingEmbeddings.push(embeddings[index]);
-        } else {
-          deletedCount++;
-        }
-      });
-
-      embeddings = survivingEmbeddings;
-      metadata = survivingMetadata;
-    }
-
-    if (additionsExist) {
-      for (const filePath of docFilePaths) {
-        if (filePath.endsWith(".md") && !metadata.some((meta) => meta.path === filePath)) {
-          const content = await fs.readFile(filePath, "utf-8");
-          const embedding = await extractEmbedding(content);
-          embeddings.push(embedding);
-          metadata.push({ path: filePath });
-          addedCount++;
-        }
-      }
-    }
-
-    await saveSearchIndex(embeddings, metadata);
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Successfully indexed ${addedCount} new document(s) and removed ${deletedCount} deleted document(s).`,
-        },
-      ],
-    };
+    return await reindexDocs();
   }
 );
 

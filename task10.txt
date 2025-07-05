@@ -1,0 +1,18 @@
+Main Goal:
+Enhance the reindex-docs tool to fully support file edits and modifications
+
+Tasks:
+   1. Enhance Metadata: I'll update the FileMetadata interface in src/index.ts to include a hash of the file's content. This will allow us to
+      detect changes efficiently without re-processing unchanged files.
+   2. Update `reindex-docs` Logic: I will modify the tool to perform a three-way synchronization:
+       * Check for Deletions: Remove any files from the index that no longer exist in the ai_docs directory.
+       * Check for Edits: For existing files, I'll compare their current content hash against the one stored in the metadata. If they differ,
+         I'll re-compute the embedding for that file and update it in place.
+       * Check for Additions: Add any new files to the index, computing their embeddings and metadata.
+   3. Update Documentation: Finally, I'll update the ai_docs/mcp_server_documentation.md to reflect that the reindex-docs tool now fully
+      synchronizes the index by handling additions, deletions, and modifications.
+
+Technical requirements:
+- Batch all changed files and call the transformer pipeline once per batch instead of per file.
+- Consider atomic writes (temp file + rename) so readers never see a partially-written JSON.
+- NodeJS and modern browsers have a native Crypto module. The latest version of CryptoJS already uses the native Crypto module for random number generation, since Math.random() is not crypto-safe.
