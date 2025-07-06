@@ -14,11 +14,15 @@ const SUPPORTED_FILE_EXTENSIONS = [".md"];
 
 // Output file names
 const OUTPUT_FILE_NAME = "embeddings.json";
-const METADATA_FILE_NAME = "file_metadata.json";
 
 interface FileMetadata {
   path: string;
   content: string;
+}
+
+interface EmbeddingData {
+  path: string;
+  embedding: number[];
 }
 
 // The main async function to run the process
@@ -62,15 +66,17 @@ async function generateEmbeddings() {
 
     // 3. Store in memory
     const embeddings: number[][] = output.tolist();
-    const fileMetadata = fileData.map((f) => ({ path: f.path })); // Keep only paths for metadata
+    const embeddingData: EmbeddingData[] = fileData.map((f, i) => ({
+      path: f.path,
+      embedding: embeddings[i],
+    }));
 
     // Verify the order and size
     console.log(`Successfully generated ${embeddings.length} embeddings.`);
     console.log("Shape of the first embedding:", embeddings[0]?.length);
 
     // Save the results to the output directory
-    await fs.writeFile(path.join(outputDir, OUTPUT_FILE_NAME), JSON.stringify(embeddings, null, 2));
-    await fs.writeFile(path.join(outputDir, METADATA_FILE_NAME), JSON.stringify(fileMetadata, null, 2));
+    await fs.writeFile(path.join(outputDir, OUTPUT_FILE_NAME), JSON.stringify(embeddingData, null, 2));
 
     console.log(`Embeddings and metadata saved to ${outputDir}`);
   } catch (error) {

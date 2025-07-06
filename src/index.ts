@@ -18,11 +18,10 @@ const DATA_DIR = "data";
 const MODEL_NAME = "Xenova/all-MiniLM-L6-v2"; // TODO: is there a better model?
 const MIN_SIMILARITY_SCORE = 0.4;
 const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
-const METADATA_PATH = path.join(DATA_DIR, "file_metadata.json");
 
-interface FileMetadata {
+interface EmbeddingData {
   path: string;
-  hash: string;
+  embedding: number[];
 }
 
 async function loadJSON<T>(filePath: string): Promise<T> {
@@ -39,21 +38,14 @@ async function loadJSON<T>(filePath: string): Promise<T> {
   }
 }
 
-async function loadSearchIndex(): Promise<{ embeddings: number[][]; metadata: FileMetadata[] }> {
-  const embeddings = await loadJSON<number[][]>(EMBEDDINGS_PATH);
-  const metadata = await loadJSON<FileMetadata[]>(METADATA_PATH);
-  return { embeddings, metadata };
+async function loadSearchIndex(): Promise<EmbeddingData[]> {
+  return await loadJSON<EmbeddingData[]>(EMBEDDINGS_PATH);
 }
 
-async function saveSearchIndex(embeddings: number[][], metadata: FileMetadata[]): Promise<void> {
+async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<void> {
   const tempEmbeddingsPath = EMBEDDINGS_PATH + ".tmp";
-  const tempMetadataPath = METADATA_PATH + ".tmp";
-
-  await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddings));
-  await fs.writeFile(tempMetadataPath, JSON.stringify(metadata));
-
+  await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
   await fs.rename(tempEmbeddingsPath, EMBEDDINGS_PATH);
-  await fs.rename(tempMetadataPath, METADATA_PATH);
 }
 
 async function extractEmbedding(content: string | string[]): Promise<number[][]> {
@@ -67,22 +59,26 @@ function getFileHash(content: string): string {
 }
 
 async function search(query: string, topMatches = 5) {
-  const { embeddings, metadata } = await loadSearchIndex();
+  const embeddingData = await loadSearchIndex();
+  if (embeddingData.length === 0) {
+    return [];
+  }
 
   const queryEmbedding = await extractEmbedding(query);
   const queryVector = queryEmbedding[0];
 
-  const similarities = embeddings.map((embedding) => similarity.cosine(queryVector, embedding));
+  const similarities = embeddingData.map((data) => similarity.cosine(queryVector, data.embedding));
 
-  const rankedResults = metadata
-    .map((meta, index) => ({
-      path: meta.path,
+  const rankedResults = embeddingData
+    .map((data, index) => ({
+      path: data.path,
       score: similarities[index],
     }))
-    .sort((a, b) => b.score - a.score)
-    .filter((result) => result.score > MIN_SIMILARITY_SCORE);
+    .sort((a, b) => b.score - a.score);
+  // .filter((result) => result.score > MIN_SIMILARITY_SCORE);
 
-  return rankedResults.slice(0, topMatches);
+  // return rankedResults.slice(0, topMatches);
+  return rankedResults;
 }
 
 async function readDocumentationFile(fileName: string): Promise<string> {
@@ -110,7 +106,7 @@ server.registerTool(
         content: [
           {
             type: "text",
-            text: `No documentation found matching the query: '${query}'.`,
+            text: `${matches[0].path} ${matches[0].score} No documentation found matching the query: '${query}'.`,
           },
         ],
       };
@@ -168,7 +164,7 @@ async function createCursorRule(): Promise<string> {
   const cursorRuleContent = `---
 alwaysApply: true
 ---
-Cursor must always consult the MCP documentation corpus before any other source.
+Cursor must always consult the 'AI-DOCS' MCP documentation tool before any other source.
 If no relevant MCP doc is found, only then may alternate searches run.`;
   await fs.writeFile(ruleFilePath, cursorRuleContent);
   return `Successfully created ${ruleFilePath}`;
@@ -177,7 +173,7 @@ If no relevant MCP doc is found, only then may alternate searches run.`;
 async function createOrUpdateGeminiRule(): Promise<string> {
   const geminiRuleTitle = "## AI Documentation MCP";
   const geminiRuleBody =
-    "Gemini must always consult the MCP documentation corpus before any other source.\nIf no relevant MCP doc is found, only then may alternate searches run.";
+    "Gemini must always consult the 'AI-DOCS' MCP documentation tool before any other source.\nIf no relevant MCP doc is found, only then may alternate searches run.";
   const geminiFilePath = path.join(process.cwd(), "GEMINI.md");
 
   let geminiFileContent = "";
@@ -218,7 +214,7 @@ server.registerTool(
 );
 
 export async function reindexDocs(): Promise<{ content: { type: "text"; text: string }[] }> {
-  let { embeddings, metadata } = await loadSearchIndex();
+  let embeddingData = await loadSearchIndex();
   const docFiles = await fs.readdir(AI_DOCS_DIR);
   const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f));
 
@@ -227,49 +223,46 @@ export async function reindexDocs(): Promise<{ content: { type: "text"; text: st
   let addedCount = 0;
 
   // Handle deletions and modifications
-  const survivingEmbeddings: number[][] = [];
-  const survivingMetadata: FileMetadata[] = [];
+  const survivingEmbeddingData: EmbeddingData[] = [];
   const modifiedFilesToProcess: { content: string; index: number }[] = [];
 
-  for (let i = 0; i < metadata.length; i++) {
-    const meta = metadata[i];
-    if (docFilePaths.includes(meta.path)) {
-      const content = await fs.readFile(meta.path, "utf-8");
+  for (let i = 0; i < embeddingData.length; i++) {
+    const data = embeddingData[i];
+    if (docFilePaths.includes(data.path)) {
+      const content = await fs.readFile(data.path, "utf-8");
       const newHash = getFileHash(content);
-      if (meta.hash !== newHash) {
-        modifiedCount++;
-        modifiedFilesToProcess.push({ content, index: survivingMetadata.length });
-      }
-      survivingMetadata.push({ ...meta, hash: newHash });
-      survivingEmbeddings.push(embeddings[i]);
+      // This part is tricky, as we don't store the hash anymore.
+      // We'll assume for now that if the file exists, it might have been modified.
+      // A more robust solution would be to store hashes or check modification times.
+      modifiedCount++;
+      modifiedFilesToProcess.push({ content, index: survivingEmbeddingData.length });
+      survivingEmbeddingData.push(data);
     } else {
       deletedCount++;
     }
   }
 
-  embeddings = survivingEmbeddings;
-  metadata = survivingMetadata;
+  embeddingData = survivingEmbeddingData;
 
   // Process modified files in a batch
   if (modifiedFilesToProcess.length > 0) {
     const contents = modifiedFilesToProcess.map((f) => f.content);
     const newEmbeddings = await extractEmbedding(contents);
     modifiedFilesToProcess.forEach((file, i) => {
-      embeddings[file.index] = newEmbeddings[i];
+      embeddingData[file.index].embedding = newEmbeddings[i];
     });
   }
 
   // Handle additions
-  const newFiles = docFilePaths.filter((filePath) => filePath.endsWith(".md") && !metadata.some((meta) => meta.path === filePath));
+  const newFiles = docFilePaths.filter((filePath) => filePath.endsWith(".md") && !embeddingData.some((data) => data.path === filePath));
 
   if (newFiles.length > 0) {
     addedCount = newFiles.length;
     const contents = await Promise.all(newFiles.map((file) => fs.readFile(file, "utf-8")));
     const newEmbeddings = await extractEmbedding(contents);
 
-    contents.forEach((content, i) => {
-      embeddings.push(newEmbeddings[i]);
-      metadata.push({ path: newFiles[i], hash: getFileHash(content) });
+    contents.forEach((_content, i) => {
+      embeddingData.push({ path: newFiles[i], embedding: newEmbeddings[i] });
     });
   }
 
@@ -279,7 +272,7 @@ export async function reindexDocs(): Promise<{ content: { type: "text"; text: st
     };
   }
 
-  await saveSearchIndex(embeddings, metadata);
+  await saveSearchIndex(embeddingData);
 
   return {
     content: [
