@@ -1,6 +1,6 @@
 {
   "name": "contexta",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "An AI-powered documentation server that uses the Model Context Protocol (MCP) to make your project's documentation available to AI assistants.",
   "main": "build/src/index.js",
   "type": "module",
