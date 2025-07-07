@@ -1,9 +1,9 @@
 import { strict as assert } from "assert";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash, reindexDocs } from "../src/index.ts";
+import { createHash } from "crypto";
+import { generateIndex, AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "../src/tools/generate_index.ts";
 
-// Mocking dependencies
 jest.mock("fs/promises");
 jest.mock("@xenova/transformers", () => ({
   pipeline: jest.fn().mockResolvedValue(async (content: string | string[]) => {
@@ -14,7 +14,7 @@ jest.mock("@xenova/transformers", () => ({
   }),
 }));
 
-describe("reindex-docs", () => {
+describe("generate-index", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default mocks
@@ -51,7 +51,7 @@ describe("reindex-docs", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await reindexDocs();
+    const result = await generateIndex();
     assert.deepStrictEqual(result, { content: [{ type: "text", text: "No changes detected in documentation." }] });
   });
 
@@ -71,7 +71,7 @@ describe("reindex-docs", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await reindexDocs();
+    const result = await generateIndex();
     assert.deepStrictEqual(result, {
       content: [{ type: "text", text: "Successfully indexed 1 new, 0 modified, and removed 0 deleted document(s)." }],
     });
@@ -93,7 +93,7 @@ describe("reindex-docs", () => {
     });
     (fs.readdir as jest.Mock).mockResolvedValue([]); // Now it's gone
 
-    const result = await reindexDocs();
+    const result = await generateIndex();
     assert.deepStrictEqual(result, {
       content: [{ type: "text", text: "Successfully indexed 0 new, 0 modified, and removed 1 deleted document(s)." }],
     });
@@ -118,7 +118,7 @@ describe("reindex-docs", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await reindexDocs();
+    const result = await generateIndex();
     assert.deepStrictEqual(result, {
       content: [{ type: "text", text: "Successfully indexed 0 new, 1 modified, and removed 0 deleted document(s)." }],
     });
@@ -162,7 +162,7 @@ describe("reindex-docs", () => {
     // State of the directory
     (fs.readdir as jest.Mock).mockResolvedValue(["existing.md", "modified.md", "new.md"]);
 
-    const result = await reindexDocs();
+    const result = await generateIndex();
     assert.deepStrictEqual(result, {
       content: [{ type: "text", text: "Successfully indexed 1 new, 1 modified, and removed 1 deleted document(s)." }],
     });

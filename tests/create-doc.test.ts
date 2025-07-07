@@ -1,10 +1,10 @@
 import { createDoc } from "../src/tools/create_doc.ts";
-import { reindexDocs } from "../src/index.ts";
+import { generateIndex } from "../src/tools/generate_index.ts";
 import { promises as fs } from "fs";
 import path from "path";
 
-jest.mock("../src/index", () => ({
-  reindexDocs: jest.fn(),
+jest.mock("../src/tools/generate_index.ts", () => ({
+  generateIndex: jest.fn(),
 }));
 
 const TEST_FILE_NAME = "test-doc.md";
@@ -39,6 +39,6 @@ describe("createDoc", () => {
   it("should call reindexDocs after creating the file", async () => {
     await createDoc(TEST_FILE_NAME, TEST_CONTENT);
 
-    expect(reindexDocs).toHaveBeenCalled();
+    expect(generateIndex).toHaveBeenCalled();
   });
 });

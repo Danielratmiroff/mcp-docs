@@ -4,12 +4,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { pipeline } from "@xenova/transformers";
 import { similarity } from "ml-distance";
-import { createHash } from "crypto";
-import { logToFile } from "./utils.ts";
-import { fileHasSupportedExtension } from "./tools/generate_embeddings.ts";
 import { deleteDoc } from "./tools/delete_doc.ts";
+import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.ts";
+import { readDocumentationFile } from "./utils.ts";
 
 const server = new McpServer({
   name: "ai-docs-server",
@@ -18,60 +16,6 @@ const server = new McpServer({
     code examples, folder structure, project architecture, 
     and other relevant information that might be useful for fulfilling the user's request.`,
 });
-
-const MODEL_NAME = "Xenova/all-MiniLM-L6-v2"; // TODO: is there a better model?
-const MIN_SIMILARITY_SCORE = 0.4;
-
-export const AI_DOCS_DIR = path.join(process.cwd(), "ai_docs");
-export const DATA_DIR = path.join(process.cwd(), "data");
-export const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
-
-interface EmbeddingData {
-  path: string;
-  embedding: number[];
-  hash: string;
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  return await fs
-    .access(filePath)
-    .then(() => true)
-    .catch(() => false);
-}
-
-async function loadJSON<T>(filePath: string): Promise<T> {
-  if (!(await fileExists(filePath))) {
-    return [] as T;
-  }
-
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(data) as T;
-  } catch (error) {
-    logToFile(JSON.stringify(error, null, 2));
-    throw error;
-  }
-}
-
-async function loadSearchIndex(): Promise<EmbeddingData[]> {
-  return await loadJSON<EmbeddingData[]>(EMBEDDINGS_PATH);
-}
-
-async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<void> {
-  const tempEmbeddingsPath = EMBEDDINGS_PATH + ".tmp";
-  await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
-  await fs.rename(tempEmbeddingsPath, EMBEDDINGS_PATH);
-}
-
-async function computeEmbedding(content: string | string[]): Promise<number[][]> {
-  const extractor = await pipeline("feature-extraction", MODEL_NAME);
-  const embeddings = await extractor(content, { pooling: "mean", normalize: true });
-  return embeddings.tolist();
-}
-
-export function getFileHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
-}
 
 async function search(query: string, topMatches = 5) {
   const embeddingData = await loadSearchIndex();
@@ -94,21 +38,19 @@ async function search(query: string, topMatches = 5) {
 
   return rankedResults.slice(0, topMatches);
 }
-
-async function readDocumentationFile(fileName: string): Promise<string> {
-  try {
-    return await fs.readFile(fileName, "utf-8");
-  } catch (error) {
-    return "";
-  }
-}
-
 // Register tool to search documentation
 server.registerTool(
   "search-docs",
   {
     title: "Search AI Documentation",
-    description: `You MUST call this function before 'read-doc' to obtain the correct filename for the documentation you need.\n\nSelection Process:\n1. Analyzes the user's query to understand the subject.\n2. Returns the most relevant document(s) based on semantic similarity.\n\nResponse Format:\n- Returns a ranked list of matching documentation files as a JSON object.\n- Each entry includes the 'path' and a similarity 'score'.\n- If no matches are found, it will state this clearly.`,
+    description: `You MUST call this function before 'read-doc' to obtain the correct filename for the documentation you need.
+    Selection Process:
+    1. Analyzes the user's query to understand the subject.
+    2. Returns the most relevant document(s) based on semantic similarity.
+    Response Format:
+    - Returns a ranked list of matching documentation files as a JSON object.
+    - Each entry includes the 'path' and a similarity 'score'.
+    - If no matches are found, it will state this clearly.`,
     inputSchema: {
       query: z.string().describe("Free-text search query for semantic matching."),
     },
@@ -143,7 +85,7 @@ server.registerTool(
   {
     title: "Read AI Documentation File",
     description:
-      "Reads the content of a documentation file given its full path. You MUST call 'search-docs' first to obtain the correct filePath.",
+      "You MUST call 'search-docs' function tool first to obtain the correct filePath. Then, use this tool to read the content of a documentation file given its full path.",
     inputSchema: {
       filePath: z.string().describe("The full path of the file to read."),
     },
@@ -255,81 +197,15 @@ server.registerTool(
   }
 );
 
-export async function reindexDocs(): Promise<{ content: { type: "text"; text: string }[] }> {
-  const oldEmbeddingData = await loadSearchIndex();
-  const oldEmbeddingMap = new Map(oldEmbeddingData.map((entry) => [entry.path, entry]));
-
-  const docFiles = await fs.readdir(AI_DOCS_DIR);
-  const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f)).filter(fileHasSupportedExtension);
-
-  const finalEmbeddingData: EmbeddingData[] = [];
-  const filesToEmbed: { path: string; content: string }[] = [];
-  let modifiedCount = 0;
-  let addedCount = 0;
-
-  for (const docFilePath of docFilePaths) {
-    const content = await fs.readFile(docFilePath, "utf-8");
-    const newHash = getFileHash(content);
-    const oldEntry = oldEmbeddingMap.get(docFilePath);
-
-    if (oldEntry) {
-      // File exists in old index
-      if (newHash === oldEntry.hash) {
-        // Unchanged, carry it over
-        finalEmbeddingData.push(oldEntry);
-      } else {
-        // Modified
-        modifiedCount++;
-        filesToEmbed.push({ path: docFilePath, content });
-      }
-      // Mark as processed
-      oldEmbeddingMap.delete(docFilePath);
-    } else {
-      // New file
-      addedCount++;
-      filesToEmbed.push({ path: docFilePath, content });
-    }
-  }
-
-  // Any remaining entries in oldEmbeddingMap are deleted
-  const deletedCount = oldEmbeddingMap.size;
-
-  if (addedCount === 0 && modifiedCount === 0 && deletedCount === 0) {
-    return { content: [{ type: "text", text: "No changes detected in documentation." }] };
-  }
-
-  // Process new and modified files in a batch
-  if (filesToEmbed.length > 0) {
-    const contents = filesToEmbed.map((f) => f.content);
-    const newEmbeddings = await computeEmbedding(contents);
-
-    filesToEmbed.forEach((file, i) => {
-      const hash = getFileHash(file.content);
-      finalEmbeddingData.push({ path: file.path, embedding: newEmbeddings[i], hash });
-    });
-  }
-
-  await saveSearchIndex(finalEmbeddingData);
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).`,
-      },
-    ],
-  };
-}
-
 server.registerTool(
-  "reindex-docs",
+  "generate-index",
   {
-    title: "Re-index AI Documentation",
-    description: "Updates the search index with any new, modified, or deleted documentation files.",
+    title: "Generate AI Documentation Index",
+    description: "Generates or updates the search index for all documentation files.",
     inputSchema: {},
   },
   async () => {
-    return await reindexDocs();
+    return await generateIndex();
   }
 );
 

@@ -1,10 +1,11 @@
-import { deleteDoc } from "../src/delete_doc";
-import { reindexDocs } from "../src/index.js";
+import { deleteDoc } from "../src/tools/delete_doc.ts";
+import { generateIndex } from "../src/tools/generate_index.ts";
 import { promises as fs } from "fs";
 import path from "path";
+import { fileExists } from "../src/utils.ts";
 
-jest.mock("../src/index", () => ({
-  reindexDocs: jest.fn(),
+jest.mock("../src/tools/generate_index.ts", () => ({
+  generateIndex: jest.fn(),
 }));
 
 const TEST_FILE_NAME = "delete-test.md";
@@ -28,15 +29,12 @@ describe("deleteDoc", () => {
 
   it("should delete an existing documentation file", async () => {
     await deleteDoc(TEST_FILE_NAME);
-    const exists = await fs
-      .access(TEST_FILE_PATH)
-      .then(() => true)
-      .catch(() => false);
+    const exists = await fileExists(TEST_FILE_PATH);
     expect(exists).toBe(false);
   });
 
-  it("should call reindexDocs after deleting the file", async () => {
+  it("should call generateIndex after deleting the file", async () => {
     await deleteDoc(TEST_FILE_NAME);
-    expect(reindexDocs).toHaveBeenCalled();
+    expect(generateIndex).toHaveBeenCalled();
   });
 });

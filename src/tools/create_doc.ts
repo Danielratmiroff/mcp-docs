@@ -1,17 +1,14 @@
-import { reindexDocs } from "../index.ts";
-import { promises as fs } from "fs";
-import path from "path";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { generateIndex } from "./generate_index.ts";
 
-const DOCS_DIR = path.join(process.cwd(), "ai_docs");
+const AI_DOCS_DIR = path.join(process.cwd(), "ai_docs");
 
-export async function createDoc(fileName: string, content: string): Promise<void> {
+export async function createDoc(fileName: string, content: string) {
   if (!fileName.endsWith(".md")) {
     fileName += ".md";
   }
-
-  const filePath = path.join(DOCS_DIR, fileName);
-
+  const filePath = path.join(AI_DOCS_DIR, fileName);
   await fs.writeFile(filePath, content);
-
-  await reindexDocs();
+  await generateIndex();
 }
