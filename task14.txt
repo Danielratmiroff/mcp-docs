@@ -1,0 +1,10 @@
+Main Goal: Refactor the codebase to have a more modular structure.
+
+- restructure folders to have:
+	- src/
+        - index.ts # Responsible for running the server, registering tools, etc.
+        - data/ # Responsible for storing data
+        - tools/
+            - file for each tool # Functionality for each tool
+        - utils/ # Responsible for utility functions
+        - tests/
