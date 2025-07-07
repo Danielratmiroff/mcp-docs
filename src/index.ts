@@ -9,7 +9,7 @@ import { readDocumentationFile } from "./utils.ts";
 import { createCursorRule, createGeminiRule } from "./ai_rules.ts";
 
 const server = new McpServer({
-  name: "ai-docs-server",
+  name: "contexta",
   version: "1.0.0",
   instructions: `Use this server to retrieve the project's up-to-date documentation, best practices, 
     code examples, folder structure, project architecture, 

@@ -1,7 +1,7 @@
 {
-  "name": "mcp-git-server",
+  "name": "contexta",
   "version": "1.0.0",
-  "description": "MCP server for Git operations",
+  "description": "An AI-powered documentation server that uses the Model Context Protocol (MCP) to make your project's documentation available to AI assistants.",
   "main": "build/src/index.js",
   "type": "module",
   "scripts": {
@@ -9,11 +9,13 @@
     "start": "node --loader ts-node/esm ./src/index.ts",
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest",
-    "lint": "pnpm dlx eslint"
+    "lint": "pnpm dlx eslint",
+    "prepublishOnly": "pnpm test && pnpm lint && pnpm build"
   },
   "keywords": [
     "mcp",
-    "git"
+    "ai",
+    "documentation"
   ],
   "author": "",
   "license": "ISC",

@@ -1,6 +1,6 @@
-# MCP Server Documentation
+# Contexta Documentation
 
-This document provides an overview of the Model Context Protocol (MCP) server, its structure, and how to interact with it.
+This document provides an overview of the Contexta server, its structure, and how to interact with it.
 
 ## Embeddings for Document Search
 
@@ -14,20 +14,22 @@ The core of the documentation search functionality relies on **embeddings**.
 
 ```mermaid
 graph TD
-  A[Project Root] --> B[ai_docs/ \nMarkdown docs]
+  A[Project Root] --> B[ai_docs/
+Markdown docs]
   A --> C[data/]
   A --> D[src/]
 
   C --> C1[embeddings.json]
   C --> C2[file_metadata.json]
 
-  D --> D1[index.ts \nHTTP + tools]
+  D --> D1[index.ts
+HTTP + tools]
   D --> D2[generate_embeddings.ts]
 ```
 
-## MCP Server Tools
+## Contexta Server Tools
 
-The MCP server exposes the following tools for interaction:
+The Contexta server exposes the following tools for interaction:
 
 ### `search-docs`
 
@@ -50,7 +52,7 @@ The MCP server exposes the following tools for interaction:
   1.  A rule file at `.cursor/rules/always-mcp-doc-search.mdc` to instruct Cursor to always consult this documentation first.
   2.  A `GEMINI.md` file with a similar rule for Gemini.
 
-### `reindex-docs`
+### `generate-index`
 
 - **Purpose:** To fully synchronize the search index with the `ai_docs` folder. It intelligently handles additions, modifications, and deletions to ensure the search results are always perfectly up-to-date.
 - **Input:** None.
