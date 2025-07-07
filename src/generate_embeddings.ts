@@ -1,19 +1,15 @@
 import { pipeline } from "@xenova/transformers";
 import * as fs from "fs/promises";
 import * as path from "path";
-
-// Paths
-const AI_DOCS_DIR = "ai_docs";
-const OUTPUT_DIR = "data";
+import { AI_DOCS_DIR, EMBEDDINGS_PATH } from "./index.js";
 
 // AI model
 const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 
 // File extensions
-const SUPPORTED_FILE_EXTENSIONS = [".md"];
+export const SUPPORTED_FILE_EXTENSIONS = [".md"];
 
-// Output file names
-const OUTPUT_FILE_NAME = "embeddings.json";
+export const fileHasSupportedExtension = (file: string) => SUPPORTED_FILE_EXTENSIONS.some((ext) => file.endsWith(ext));
 
 interface FileMetadata {
   path: string;
@@ -33,16 +29,12 @@ async function generateEmbeddings() {
   const extractor = await pipeline("feature-extraction", MODEL_NAME);
   console.log("Model loaded successfully.");
 
-  const docsPath = path.join(process.cwd(), AI_DOCS_DIR);
-  const outputDir = path.join(process.cwd(), OUTPUT_DIR);
-
   try {
     // Ensure output directory exists
-    await fs.mkdir(outputDir, { recursive: true });
+    await fs.mkdir(AI_DOCS_DIR, { recursive: true });
 
     // Filter out non-markdown files
-    const fileHasExtension = (file: string) => SUPPORTED_FILE_EXTENSIONS.some((ext) => file.endsWith(ext));
-    const files = (await fs.readdir(docsPath)).filter(fileHasExtension);
+    const files = (await fs.readdir(AI_DOCS_DIR))?.filter(fileHasSupportedExtension) ?? [];
 
     const fileData: FileMetadata[] = [];
 
@@ -50,7 +42,7 @@ async function generateEmbeddings() {
 
     // Read all file contents
     for (const file of files) {
-      const filePath = path.join(docsPath, file);
+      const filePath = path.join(AI_DOCS_DIR, file);
       const stats = await fs.stat(filePath);
       if (stats.isFile()) {
         const content = await fs.readFile(filePath, "utf-8");
@@ -76,9 +68,9 @@ async function generateEmbeddings() {
     console.log("Shape of the first embedding:", embeddings[0]?.length);
 
     // Save the results to the output directory
-    await fs.writeFile(path.join(outputDir, OUTPUT_FILE_NAME), JSON.stringify(embeddingData, null, 2));
+    await fs.writeFile(EMBEDDINGS_PATH, JSON.stringify(embeddingData, null, 2));
 
-    console.log(`Embeddings and metadata saved to ${outputDir}`);
+    console.log(`Embeddings and metadata saved to ${EMBEDDINGS_PATH}`);
   } catch (error) {
     console.error("An error occurred:", error);
   }
