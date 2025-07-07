@@ -1,4 +1,4 @@
-import { createDoc } from "./create_doc.ts";
+import { createDoc } from "./tools/create_doc.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -8,8 +8,8 @@ import { pipeline } from "@xenova/transformers";
 import { similarity } from "ml-distance";
 import { createHash } from "crypto";
 import { logToFile } from "./utils.ts";
-import { fileHasSupportedExtension } from "./generate_embeddings.ts";
-import { deleteDoc } from "./delete_doc.ts";
+import { fileHasSupportedExtension } from "./tools/generate_embeddings.ts";
+import { deleteDoc } from "./tools/delete_doc.ts";
 
 const server = new McpServer({
   name: "ai-docs-server",

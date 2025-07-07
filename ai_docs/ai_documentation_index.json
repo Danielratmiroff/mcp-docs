@@ -1,8 +1,0 @@
-[
-  {
-    "file": "commit_message_rules.md",
-    "title": "Commit Message Rules",
-    "description": "Guidelines and best practices for writing conventional commit messages.",
-    "keywords": ["commit", "message", "git", "conventional", "best practices"]
-  }
-] 

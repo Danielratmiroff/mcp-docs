@@ -1,5 +1,5 @@
-import { createDoc } from "../src/create_doc";
-import { AI_DOCS_DIR, reindexDocs } from "../src/index";
+import { createDoc } from "../src/tools/create_doc.ts";
+import { reindexDocs } from "../src/index.ts";
 import { promises as fs } from "fs";
 import path from "path";
 

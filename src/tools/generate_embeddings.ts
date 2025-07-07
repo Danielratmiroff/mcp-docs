@@ -1,7 +1,7 @@
 import { pipeline } from "@xenova/transformers";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "./index.ts";
+import { AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "../index.ts";
 
 // AI model
 const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";

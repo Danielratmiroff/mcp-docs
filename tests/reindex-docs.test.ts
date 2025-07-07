@@ -1,8 +1,7 @@
 import { strict as assert } from "assert";
-import { createHash } from "crypto";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash, reindexDocs } from "../src/index.js";
+import { AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash, reindexDocs } from "../src/index.ts";
 
 // Mocking dependencies
 jest.mock("fs/promises");

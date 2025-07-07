@@ -56,6 +56,12 @@ The MCP server exposes the following tools for interaction:
 - **Input:** None.
 - **Output:** A confirmation message detailing how many documents were added, modified, and/or removed from the index.
 
+### `create-doc`
+
+- **Purpose:** To create a new documentation file in the `ai_docs` folder.
+- **Input:** A `fileName` string specifying the file to create (with or without the `.md` extension).
+- **Output:** A confirmation message indicating the file has been created.
+
 ### `delete-doc`
 
 - **Purpose:** Deletes a documentation file from the `ai_docs` folder and reindexes the embeddings so it is not accessible through other tools.
