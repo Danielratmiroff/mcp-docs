@@ -8,7 +8,7 @@
     "build": "npx tsc",
     "embed": "node --loader ts-node/esm ./src/generate_embeddings.ts",
     "start": "node --loader ts-node/esm ./src/index.ts",
-    "inspect": "npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
+    "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest"
   },
   "keywords": [

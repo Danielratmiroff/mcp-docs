@@ -1,0 +1,14 @@
+Main Goal: Solve the problem of detecting modified files in the search index.
+
+
+Store the hash in the embedding object. Alongside the embedding and path.
+
+
+
+
+
+
+
+
+
+

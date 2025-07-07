@@ -1,0 +1,6 @@
+Main Goal:
+Add a new tool for the AI to create a new documentation file.
+
+Tasks:
+- To create a file in the right location in the AI docs folder 
+- It should re-index the embeddings so that the file is accessible through the other tools 

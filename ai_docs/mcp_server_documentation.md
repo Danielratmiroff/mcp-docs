@@ -55,3 +55,9 @@ The MCP server exposes the following tools for interaction:
 - **Purpose:** To fully synchronize the search index with the `ai_docs` folder. It intelligently handles additions, modifications, and deletions to ensure the search results are always perfectly up-to-date.
 - **Input:** None.
 - **Output:** A confirmation message detailing how many documents were added, modified, and/or removed from the index.
+
+### `delete-doc`
+
+- **Purpose:** Deletes a documentation file from the `ai_docs` folder and reindexes the embeddings so it is not accessible through other tools.
+- **Input:** A `fileName` string specifying the file to delete (with or without the `.md` extension).
+- **Output:** A confirmation message indicating the file has been deleted and the index has been updated.

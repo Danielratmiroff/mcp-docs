@@ -1,0 +1,11 @@
+test(reindex-docs): add unit tests for reindex-docs functionality
+
+Adds a comprehensive test suite for the `reindex-docs` function.
+
+The new tests cover the following scenarios:
+- No changes in the documentation directory.
+- Addition of a new documentation file.
+- Deletion of an existing documentation file.
+- Modification of an existing documentation file.
+
+The tests utilize mocks for the file system (`fs/promises`) and the `@xenova/transformers` library to ensure isolated and predictable test execution.

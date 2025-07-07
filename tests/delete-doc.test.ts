@@ -1,4 +1,4 @@
-import { deleteDoc } from "../src/delete_doc.js";
+import { deleteDoc } from "../src/delete_doc";
 import { reindexDocs } from "../src/index.js";
 import { promises as fs } from "fs";
 import path from "path";
