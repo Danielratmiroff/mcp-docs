@@ -2,12 +2,11 @@ import { createDoc } from "./tools/create_doc.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import * as fs from "fs/promises";
-import * as path from "path";
 import { similarity } from "ml-distance";
 import { deleteDoc } from "./tools/delete_doc.ts";
 import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.ts";
 import { readDocumentationFile } from "./utils.ts";
+import { createCursorRule, createGeminiRule } from "./ai_rules.ts";
 
 const server = new McpServer({
   name: "ai-docs-server",
@@ -137,45 +136,6 @@ server.registerTool(
   }
 );
 
-const AI_DOCS_MCP_DESCRIPTION = `MCP 'AI-DOCS' server is used to retrieve the project's up-to-date documentation, best practices, 
-code examples, folder structure, project architecture, 
-and other relevant information that might be useful for fulfilling the user's request.
-
-You should consult the 'AI-DOCS' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.`;
-
-async function createCursorRule(): Promise<string> {
-  const rulesDir = path.join(process.cwd(), ".cursor", "rules");
-  await fs.mkdir(rulesDir, { recursive: true });
-  const ruleFilePath = path.join(rulesDir, "mcp-ai-docs.mdc");
-  const cursorRuleContent = `---
-alwaysApply: false
----
-${AI_DOCS_MCP_DESCRIPTION}`;
-
-  await fs.writeFile(ruleFilePath, cursorRuleContent);
-  return `Successfully created ${ruleFilePath}`;
-}
-
-async function createOrUpdateGeminiRule(): Promise<string> {
-  const geminiRuleTitle = "## AI Documentation MCP";
-  const geminiFilePath = path.join(process.cwd(), "GEMINI.md");
-
-  let geminiFileContent = "";
-  try {
-    geminiFileContent = await fs.readFile(geminiFilePath, "utf-8");
-  } catch (error) {
-    // File doesn't exist, which is fine
-  }
-
-  if (geminiFileContent.includes(geminiRuleTitle)) {
-    return "GEMINI.md already contains the rule.";
-  } else {
-    const contentToAppend = (geminiFileContent ? "\n\n" : "") + `${geminiRuleTitle}\n${AI_DOCS_MCP_DESCRIPTION}`;
-    await fs.appendFile(geminiFilePath, contentToAppend);
-    return `Successfully updated ${geminiFilePath}`;
-  }
-}
-
 server.registerTool(
   "init",
   {
@@ -184,7 +144,7 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
-    const messages = await Promise.all([createCursorRule(), createOrUpdateGeminiRule()]);
+    const messages = await Promise.all([createCursorRule(), createGeminiRule()]);
 
     return {
       content: [
