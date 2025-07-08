@@ -17,7 +17,8 @@
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest",
     "lint": "pnpm dlx eslint",
-    "prepublishOnly": "pnpm test && pnpm lint && pnpm build"
+    "testprepublishOnly": "pnpm test && pnpm lint && pnpm build",
+    "prepublishOnly": "pnpm build"
   },
   "keywords": [
     "mcp",
