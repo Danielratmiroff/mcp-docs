@@ -1,6 +1,6 @@
-# Contexta
+# Contexto
 
-Contexta is a Model Context Protocol (MCP) documentation server that makes your project's documentation available to AI assistants. Enabling them to follow your project's best practices and architecture.
+Contexto is a Model Context Protocol (MCP) documentation server that makes your project's documentation available to AI assistants. Enabling them to follow your project's best practices and architecture.
 
 ## Main Features 🤖
 
@@ -11,17 +11,17 @@ Contexta is a Model Context Protocol (MCP) documentation server that makes your 
 
 ## How to Use 🔍
 
-Contexta pulls your up-to-date documentation and uses it as context for your LLM prompt.
+Contexto pulls your up-to-date documentation and uses it as context for your LLM prompt.
 
 1. Write your prompt naturally.
-2. The AI will determine if it needs to use Contexta to anwser your question more effectively.
+2. The AI will determine if it needs to use Contexto to anwser your question more effectively.
 
-or enforce the use of Contexta by appending "use contexta" to your prompt.
+or enforce the use of Contexto by appending "use contexto" to your prompt.
 
 Examples:
 
 ```text
-Create a Next.js middleware for JWT authentication with cookie validation and login redirect. use contexta
+Create a Next.js middleware for JWT authentication with cookie validation and login redirect. use contexto
 ```
 
 No manual searches, no outdated code, just real-time docs in your context.
@@ -40,9 +40,9 @@ Go to: Settings -> Cursor Settings -> MCP -> Add new global MCP server.
 ```json
 {
   "mcpServers": {
-    "contexta": {
+    "contexto": {
       "command": "npx",
-      "args": ["-y", "contexta"]
+      "args": ["-y", "contexto"]
     }
   }
 }
@@ -55,10 +55,10 @@ Add the following to your VS Code MCP config (e.g., in `settings.json`):
 ```json
 "mcp": {
   "servers": {
-    "contexta": {
+    "contexto": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "contexta"]
+      "args": ["-y", "contexto"]
     }
   }
 }
@@ -71,9 +71,9 @@ Open or create `~/.gemini/settings.json` or your project's `.gemini/settings.jso
 ```json
 {
   "mcpServers": {
-    "contexta": {
+    "contexto": {
       "command": "npx",
-      "args": ["-y", "contexta"]
+      "args": ["-y", "contexto"]
     }
   }
 }
@@ -82,7 +82,7 @@ Open or create `~/.gemini/settings.json` or your project's `.gemini/settings.jso
 ### Install in Claude Code
 
 ```bash
-claude mcp add contexta -- npx -y contexta
+claude mcp add contexto -- npx -y contexto
 ```
 
 ## Contributing 🤝

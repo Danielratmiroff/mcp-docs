@@ -2,8 +2,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
 import { createHash } from "crypto";
-import { fileExists, logToFile } from "../utils.ts";
-import { EmbeddingData } from "../types.ts";
+import { fileExists, logToFile } from "../utils.js";
+import { EmbeddingData } from "../types.js";
 
 export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 export const MIN_SIMILARITY_SCORE = 0.4;

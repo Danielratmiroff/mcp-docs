@@ -1,15 +1,16 @@
-import { createDoc } from "./tools/create_doc.ts";
+#!/usr/bin/env node
+import { createDoc } from "./tools/create_doc.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { similarity } from "ml-distance";
-import { deleteDoc } from "./tools/delete_doc.ts";
-import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.ts";
-import { readDocumentationFile } from "./utils.ts";
-import { createCursorRule, createGeminiRule } from "./ai_rules.ts";
+import { deleteDoc } from "./tools/delete_doc.js";
+import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.js";
+import { readDocumentationFile } from "./utils.js";
+import { createCursorRule, createGeminiRule } from "./ai_rules.js";
 
 const server = new McpServer({
-  name: "contexta",
+  name: "contexto",
   version: "1.0.0",
   instructions: `Use this server to retrieve the project's up-to-date documentation, best practices, 
     code examples, folder structure, project architecture, 

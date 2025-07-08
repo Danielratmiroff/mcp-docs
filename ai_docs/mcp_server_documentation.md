@@ -1,6 +1,6 @@
-# Contexta Documentation
+# Contexto Documentation
 
-This document provides an overview of the Contexta server, its structure, and how to interact with it.
+This document provides an overview of the Contexto server, its structure, and how to interact with it.
 
 ## Embeddings for Document Search
 
@@ -27,9 +27,9 @@ HTTP + tools]
   D --> D2[generate_embeddings.ts]
 ```
 
-## Contexta Server Tools
+## Contexto Server Tools
 
-The Contexta server exposes the following tools for interaction:
+The Contexto server exposes the following tools for interaction:
 
 ### `search-docs`
 

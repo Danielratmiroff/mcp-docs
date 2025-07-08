@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { generateIndex } from "./generate_index.ts";
+import { generateIndex } from "./generate_index.js";
 
 const AI_DOCS_DIR = path.join(process.cwd(), "ai_docs");
 
