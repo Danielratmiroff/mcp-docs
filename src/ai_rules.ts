@@ -2,13 +2,13 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 const AI_DOCS_MCP_DESCRIPTION = `
-# AI-DOCS MCP
+# CONTEXTO MCP
 
-MCP 'AI-DOCS' server is used to retrieve the project's up-to-date documentation, best practices, 
-code examples, folder structure, project architecture, 
+You MUST use the 'CONTEXTO' MCP TOOL KIT to retrieve the project's up-to-date documentation, best practices,
+code examples, folder structure, project architecture,
 and other relevant information that might be useful for fulfilling the user's request.
 
-You should consult the 'AI-DOCS' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.
+You should ALWAYS consult the 'CONTEXTO' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.
 `;
 
 /*
@@ -17,9 +17,9 @@ You should consult the 'AI-DOCS' MCP documentation when you are unsure or have a
 export async function createCursorRule(): Promise<string> {
   const rulesDir = path.join(process.cwd(), ".cursor", "rules");
   await fs.mkdir(rulesDir, { recursive: true });
-  const ruleFilePath = path.join(rulesDir, "mcp-ai-docs.mdc");
+  const ruleFilePath = path.join(rulesDir, "mcp-contexto.mdc");
   const cursorRuleContent = `---
-alwaysApply: false
+alwaysApply: true
 ---
 ${AI_DOCS_MCP_DESCRIPTION}`;
 
@@ -38,7 +38,7 @@ export async function createGeminiRule(): Promise<string> {
     path.join(geminiDir, "settings.json"),
     JSON.stringify(
       {
-        contextFileName: ["GEMINI.md", "AI_DOCS_GEMINI.md"],
+        contextFileName: ["GEMINI.md", "CONTEXTO_GEMINI.md"],
       },
       null,
       2
@@ -46,7 +46,7 @@ export async function createGeminiRule(): Promise<string> {
   );
 
   // Create the AI_DOCS_GEMINI.md file
-  const ruleFilePath = path.join(process.cwd(), "AI_DOCS_GEMINI.md");
+  const ruleFilePath = path.join(process.cwd(), "CONTEXTO_GEMINI.md");
   await fs.writeFile(ruleFilePath, AI_DOCS_MCP_DESCRIPTION);
   return `Successfully created ${ruleFilePath}`;
 }

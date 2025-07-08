@@ -1,6 +1,6 @@
 {
   "name": "contexto-mcp",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "An AI-powered documentation server that uses the Model Context Protocol (MCP) to make your project's documentation available to AI assistants.",
   "main": "build/src/index.js",
   "type": "module",
@@ -17,7 +17,7 @@
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest",
     "lint": "pnpm dlx eslint",
-    "prepublishOnly": "pnpm test && pnpm build"
+    "prepublishOnly": "pnpm test && pnpm lint && pnpm build"
   },
   "keywords": [
     "mcp",
