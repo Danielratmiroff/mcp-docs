@@ -2,14 +2,19 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
 import { createHash } from "crypto";
-import { fileExists, logToFile } from "../utils.js";
+import { fileExists, logToFile, findProjectRoot } from "../utils.js";
 import { EmbeddingData } from "../types.js";
+
+const projectRoot = findProjectRoot();
+if (!projectRoot) {
+  throw new Error("Failed to find project root.");
+}
 
 export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 export const MIN_SIMILARITY_SCORE = 0.4;
-export const AI_DOCS_DIR = path.join(process.cwd(), "ai_docs");
+export const AI_DOCS_DIR = path.join(projectRoot, "ai_docs");
 
-export const DATA_DIR = path.join(process.cwd(), "data");
+export const DATA_DIR = path.join(projectRoot, "data");
 export const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
 export const SUPPORTED_FILE_EXTENSIONS = [".md", ".txt"];
 
@@ -54,6 +59,10 @@ export function getFileHash(content: string): string {
 export async function generateIndex(): Promise<{ content: { type: "text"; text: string }[] }> {
   const oldEmbeddingData = await loadSearchIndex();
   const oldEmbeddingMap = new Map(oldEmbeddingData.map((entry) => [entry.path, entry]));
+
+  if (!(await fileExists(AI_DOCS_DIR))) {
+    return { content: [{ type: "text", text: `No documentation directory found. Path: ${AI_DOCS_DIR}` }] };
+  }
 
   const docFiles = await fs.readdir(AI_DOCS_DIR);
   const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f)).filter(fileHasSupportedExtension);

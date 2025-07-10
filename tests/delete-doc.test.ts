@@ -1,8 +1,8 @@
-import { deleteDoc } from "../src/tools/delete_doc.ts";
-import { generateIndex } from "../src/tools/generate_index.ts";
+import { deleteDoc } from "../src/tools/delete_doc.js";
+import { generateIndex } from "../src/tools/generate_index.js";
 import { promises as fs } from "fs";
 import path from "path";
-import { fileExists } from "../src/utils.ts";
+import { fileExists } from "../src/utils.js";
 
 jest.mock("../src/tools/generate_index.ts", () => ({
   generateIndex: jest.fn(),

@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { similarity } from "ml-distance";
 import { deleteDoc } from "./tools/delete_doc.js";
-import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.js";
+import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex, EMBEDDINGS_PATH } from "./tools/generate_index.js";
 import { readDocumentationFile } from "./utils.js";
 import { createCursorRule, createGeminiRule } from "./ai_rules.js";
 
@@ -36,7 +36,7 @@ async function search(query: string, topMatches = 5) {
     .sort((a, b) => b.score - a.score)
     .filter((result) => result.score > MIN_SIMILARITY_SCORE);
 
-  return rankedResults.slice(0, topMatches);
+  return rankedResults;
 }
 // Register tool to search documentation
 server.registerTool(
@@ -57,12 +57,20 @@ server.registerTool(
   },
   async ({ query }: { query: string }, _extra) => {
     const matches = await search(query);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Matches: ${EMBEDDINGS_PATH}`,
+        },
+      ],
+    };
     if (!matches.length) {
       return {
         content: [
           {
             type: "text",
-            text: `${matches} No documentation found matching the query: '${query}'.`,
+            text: `${matches} No the query: '${query}'.`,
           },
         ],
       };

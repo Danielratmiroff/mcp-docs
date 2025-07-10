@@ -1,5 +1,5 @@
-import { createDoc } from "../src/tools/create_doc.ts";
-import { generateIndex } from "../src/tools/generate_index.ts";
+import { createDoc } from "../src/tools/create_doc.js";
+import { generateIndex } from "../src/tools/generate_index.js";
 import { promises as fs } from "fs";
 import path from "path";
 
