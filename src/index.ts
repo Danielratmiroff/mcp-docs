@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { similarity } from "ml-distance";
 import { deleteDoc } from "./tools/delete_doc.js";
-import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex, EMBEDDINGS_PATH } from "./tools/generate_index.js";
+import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.js";
 import { readDocumentationFile } from "./utils.js";
 import { createCursorRule, createGeminiRule } from "./ai_rules.js";
 
@@ -87,7 +87,7 @@ server.registerTool(
     description:
       "You MUST call 'search-docs' function tool first to obtain the correct filePath. Then, use this tool to read the content of a documentation file given its full path.",
     inputSchema: {
-      filePath: z.string().describe("The full path of the file to read."),
+      filePath: z.string().describe("The path relative to the project root of the file to read."),
     },
   },
   async ({ filePath }) => {

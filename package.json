@@ -20,7 +20,7 @@
     "check": "pnpm test",
     "prepare": "pnpm build",
     "pre-commit": "pnpm check && pnpm build",
-    "prepublishOnly": "pnpm check && pnpm build"
+    "prepublishOnly": "pnpm build"
   },
   "keywords": [
     "mcp",

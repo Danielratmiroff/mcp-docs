@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { createCursorRule, createGeminiRule } from "../src/ai_rules";
+import { findProjectRoot } from "../src/utils";
 
 jest.mock("fs/promises");
 
@@ -15,7 +16,10 @@ You should ALWAYS consult the 'CONTEXTO' MCP documentation when you are unsure o
 `;
 
 describe("AI Rules", () => {
-  const CWD = process.cwd();
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    throw new Error("Failed to find project root.");
+  }
 
   beforeEach(() => {
     // Clear all mocks before each test
@@ -24,7 +28,7 @@ describe("AI Rules", () => {
 
   describe("createCursorRule", () => {
     it("should create the .cursor/rules directory and the rule file", async () => {
-      const rulesDir = path.join(CWD, ".cursor", "rules");
+      const rulesDir = path.join(projectRoot, ".cursor", "rules");
       const ruleFilePath = path.join(rulesDir, "mcp-contexto.mdc");
       const expectedContent = `---
 alwaysApply: true
@@ -45,9 +49,9 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
   });
 
   describe("createGeminiRule", () => {
-    const geminiDir = path.join(CWD, ".gemini");
+    const geminiDir = path.join(projectRoot, ".gemini");
     const settingsPath = path.join(geminiDir, "settings.json");
-    const ruleFilePath = path.join(CWD, "CONTEXTO_GEMINI.md");
+    const ruleFilePath = path.join(projectRoot, "CONTEXTO_GEMINI.md");
 
     it("should create .gemini dir, settings.json, and CONTEXTO_GEMINI.md if none exist", async () => {
       // Mock fs.access to throw ENOENT, simulating file not found

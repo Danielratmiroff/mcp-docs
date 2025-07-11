@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { createHash } from "crypto";
-import { generateIndex, AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "../src/tools/generate_index";
+import { generateIndex, getFileHash } from "../src/tools/generate_index";
 
 jest.mock("fs/promises");
 jest.mock("@xenova/transformers", () => ({
@@ -13,6 +13,9 @@ jest.mock("@xenova/transformers", () => ({
     return { tolist: () => [[1]] };
   }),
 }));
+
+const AI_DOCS_DIR = "ai_docs";
+const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
 
 describe("generate-index", () => {
   beforeEach(() => {

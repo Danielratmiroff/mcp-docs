@@ -3,19 +3,22 @@ import * as path from "path";
 import * as fsSync from "fs";
 import { fileURLToPath } from "url";
 
-export const LOG_DIR = path.join(process.cwd(), "logs");
-export const LOG_FILE = path.join(LOG_DIR, "mcp.log");
-
 /**
  * Logs a message to a file.
  * @param message - The message to log.
  */
 export async function logToFile(message: string): Promise<void> {
-  if (!(await fileExists(LOG_DIR))) {
-    await fs.mkdir(LOG_DIR, { recursive: true });
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    throw new Error("Failed to find project root.");
+  }
+  const logDir = path.join(projectRoot, "logs");
+  if (!(await fileExists(logDir))) {
+    await fs.mkdir(logDir, { recursive: true });
   }
   const timestamp = new Date().toISOString();
-  await fs.appendFile(LOG_FILE, `[${timestamp}] ${message}\n`);
+  const logFile = path.join(logDir, "mcp.log");
+  await fs.appendFile(logFile, `[${timestamp}] ${message}\n`);
 }
 
 /**

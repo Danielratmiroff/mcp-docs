@@ -5,17 +5,11 @@ import { createHash } from "crypto";
 import { fileExists, logToFile, findProjectRoot } from "../utils.js";
 import { EmbeddingData } from "../types.js";
 
-const projectRoot = findProjectRoot();
-if (!projectRoot) {
-  throw new Error("Failed to find project root.");
-}
-
 export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 export const MIN_SIMILARITY_SCORE = 0.4;
-export const AI_DOCS_DIR = path.join(projectRoot, "ai_docs");
 
-export const DATA_DIR = path.join(projectRoot, "data");
-export const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
+const AI_DOCS_DIR_NAME = "ai_docs";
+const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
 export const SUPPORTED_FILE_EXTENSIONS = [".md", ".txt"];
 
 async function loadJSON<T>(filePath: string): Promise<T> {
@@ -36,13 +30,23 @@ function fileHasSupportedExtension(filePath: string): boolean {
 }
 
 export async function loadSearchIndex(): Promise<EmbeddingData[]> {
-  return await loadJSON<EmbeddingData[]>(EMBEDDINGS_PATH);
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    throw new Error("Failed to find project root.");
+  }
+  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+  return await loadJSON<EmbeddingData[]>(embeddingsPath);
 }
 
 async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<void> {
-  const tempEmbeddingsPath = EMBEDDINGS_PATH + ".tmp";
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    throw new Error("Failed to find project root.");
+  }
+  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+  const tempEmbeddingsPath = embeddingsPath + ".tmp";
   await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
-  await fs.rename(tempEmbeddingsPath, EMBEDDINGS_PATH);
+  await fs.rename(tempEmbeddingsPath, embeddingsPath);
 }
 
 export async function computeEmbedding(content: string | string[]): Promise<number[][]> {
@@ -55,17 +59,28 @@ export function getFileHash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
-// Main function
+/**
+ * This function is used to generate an index of the documentation files in the project.
+ * For performance reasons, we only generate a new index if:
+ * - File modification: We check for file hashes to detect if the file has been modified.
+ * - File addition & deletion: We check for file deletions.
+ */
 export async function generateIndex(): Promise<{ content: { type: "text"; text: string }[] }> {
   const oldEmbeddingData = await loadSearchIndex();
   const oldEmbeddingMap = new Map(oldEmbeddingData.map((entry) => [entry.path, entry]));
 
-  if (!(await fileExists(AI_DOCS_DIR))) {
-    return { content: [{ type: "text", text: `No documentation directory found. Path: ${AI_DOCS_DIR}` }] };
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    throw new Error("Failed to find project root.");
   }
 
-  const docFiles = await fs.readdir(AI_DOCS_DIR);
-  const docFilePaths = docFiles.map((f) => path.join(AI_DOCS_DIR, f)).filter(fileHasSupportedExtension);
+  const aiFolderPath = path.join(projectRoot, AI_DOCS_DIR_NAME);
+  if (!(await fileExists(aiFolderPath))) {
+    return { content: [{ type: "text", text: `No documentation directory found. Path: ${aiFolderPath}` }] };
+  }
+
+  const docFiles = await fs.readdir(aiFolderPath);
+  const docFilePaths = docFiles.map((f) => path.join(aiFolderPath, f)).filter(fileHasSupportedExtension);
 
   const finalEmbeddingData: EmbeddingData[] = [];
   const filesToEmbed: { path: string; content: string }[] = [];
@@ -77,6 +92,7 @@ export async function generateIndex(): Promise<{ content: { type: "text"; text: 
     const newHash = getFileHash(content);
     const oldEntry = oldEmbeddingMap.get(docFilePath);
 
+    // Check if the file has been modified
     if (oldEntry) {
       if (newHash === oldEntry.hash) {
         finalEmbeddingData.push(oldEntry);
