@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as fsSync from "fs";
+import { fileURLToPath } from "url";
 
 export const LOG_DIR = path.join(process.cwd(), "logs");
 export const LOG_FILE = path.join(LOG_DIR, "mcp.log");
@@ -50,53 +51,24 @@ export async function readDocumentationFile(filePath: string): Promise<string> {
  * @returns The path to the project root, or null if not found.
  */
 export function findProjectRoot(
-  startDir: string = process.cwd(),
-  markers: string[] = ["package.json", ".git", "pyproject.toml"]
+  /** We start from the directory of the compiled file that imports this helper. */
+  startDir: string = path.dirname(fileURLToPath(import.meta.url)),
+  markers: string[] = ["package.json", ".git"]
 ): string | null {
-  const currentDir = startDir;
+  let dir = path.resolve(startDir);
 
-  // Upward search
-  let upwardDir: string | null = currentDir;
-  while (upwardDir) {
+  while (true) {
     for (const marker of markers) {
-      if (fsSync.existsSync(path.join(upwardDir, marker))) {
-        return upwardDir;
+      if (fsSync.existsSync(path.join(dir, marker))) {
+        return dir;
       }
     }
-    const parentDir = path.dirname(upwardDir);
-    if (parentDir === upwardDir) {
-      break;
+
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      throw new Error("No project root found");
     }
-    upwardDir = parentDir;
+
+    dir = parent;
   }
-
-  // // Downward search
-  // const queue: string[] = [currentDir];
-  // const visited: Set<string> = new Set(queue);
-
-  // while (queue.length > 0) {
-  //   const dir = queue.shift()!;
-  //   for (const marker of markers) {
-  //     if (fsSync.existsSync(path.join(dir, marker))) {
-  //       return dir;
-  //     }
-  //   }
-
-  //   try {
-  //     const entries = fsSync.readdirSync(dir, { withFileTypes: true });
-  //     for (const entry of entries) {
-  //       if (entry.isDirectory()) {
-  //         const fullPath = path.join(dir, entry.name);
-  //         if (!visited.has(fullPath)) {
-  //           visited.add(fullPath);
-  //           queue.push(fullPath);
-  //         }
-  //       }
-  //     }
-  //   } catch (error) {
-  //     // Ignore errors from directories we can't read
-  //   }
-  // }
-
-  return null;
 }

@@ -57,14 +57,6 @@ server.registerTool(
   },
   async ({ query }: { query: string }, _extra) => {
     const matches = await search(query);
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Matches: ${EMBEDDINGS_PATH}`,
-        },
-      ],
-    };
     if (!matches.length) {
       return {
         content: [
