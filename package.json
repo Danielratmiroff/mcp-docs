@@ -1,6 +1,6 @@
 {
   "name": "contexto-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "An AI-powered documentation server that uses the Model Context Protocol (MCP) to make your project's documentation available to AI assistants.",
   "main": "build/src/index.js",
   "type": "module",
