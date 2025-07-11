@@ -7,7 +7,7 @@ import { similarity } from "ml-distance";
 import { deleteDoc } from "./tools/delete_doc.js";
 import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.js";
 import { readDocumentationFile } from "./utils.js";
-import { createCursorRule, createGeminiRule } from "./ai_rules.js";
+import { createCursorRule, createDataFolder, createGeminiRule } from "./ai_rules.js";
 
 const server = new McpServer({
   name: "contexto",
@@ -62,7 +62,7 @@ server.registerTool(
         content: [
           {
             type: "text",
-            text: `${matches} No the query: '${query}'.`,
+            text: `No matches found for the query: '${query}'.`,
           },
         ],
       };
@@ -145,7 +145,7 @@ server.registerTool(
     inputSchema: {},
   },
   async () => {
-    const messages = await Promise.all([createCursorRule(), createGeminiRule()]);
+    const messages = await Promise.all([createCursorRule(), createGeminiRule(), createDataFolder()]);
 
     return {
       content: [

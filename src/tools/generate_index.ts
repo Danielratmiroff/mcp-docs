@@ -38,7 +38,7 @@ export async function loadSearchIndex(): Promise<EmbeddingData[]> {
   return await loadJSON<EmbeddingData[]>(embeddingsPath);
 }
 
-async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<void> {
+async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<string> {
   const projectRoot = findProjectRoot();
   if (!projectRoot) {
     throw new Error("Failed to find project root.");
@@ -47,6 +47,7 @@ async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<void> {
   const tempEmbeddingsPath = embeddingsPath + ".tmp";
   await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
   await fs.rename(tempEmbeddingsPath, embeddingsPath);
+  return embeddingsPath;
 }
 
 export async function computeEmbedding(content: string | string[]): Promise<number[][]> {
@@ -108,9 +109,17 @@ export async function generateIndex(): Promise<{ content: { type: "text"; text: 
   }
 
   const deletedCount = oldEmbeddingMap.size;
+  const embeddingsPath2 = path.join(projectRoot, EMBEDDINGS_PATH); // TODO: remove this
 
   if (addedCount === 0 && modifiedCount === 0 && deletedCount === 0) {
-    return { content: [{ type: "text", text: "No changes detected in documentation." }] };
+    return {
+      content: [
+        {
+          type: "text",
+          text: `No changes detected in documentation.\nDocumentation path: ${aiFolderPath}\nEmbeddings path: ${embeddingsPath2}`,
+        },
+      ],
+    };
   }
 
   if (filesToEmbed.length > 0) {
@@ -123,13 +132,15 @@ export async function generateIndex(): Promise<{ content: { type: "text"; text: 
     });
   }
 
-  await saveSearchIndex(finalEmbeddingData);
+  const embeddingsPath = await saveSearchIndex(finalEmbeddingData);
 
   return {
     content: [
       {
         type: "text",
-        text: `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).`,
+        text: `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).
+        \nDocumentation path: ${aiFolderPath}
+        \nEmbeddings path: ${embeddingsPath}`,
       },
     ],
   };
