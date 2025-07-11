@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { createHash } from "crypto";
-import { generateIndex, AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "../src/tools/generate_index.ts";
+import { generateIndex, AI_DOCS_DIR, EMBEDDINGS_PATH, getFileHash } from "../src/tools/generate_index";
 
 jest.mock("fs/promises");
 jest.mock("@xenova/transformers", () => ({

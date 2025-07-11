@@ -16,11 +16,10 @@
     "start": "node --loader ts-node/esm ./src/index.ts",
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest",
-    "lint": "pnpm dlx eslint",
+    "lint": "pnpm eslint",
     "check": "pnpm test && pnpm lint",
-    "pre-commit": "pnpm check",
-    "testprepublishOnly": "pnpm check && pnpm build",
-    "prepublishOnly": "pnpm build"
+    "pre-commit": "pnpm check && pnpm build",
+    "prepublishOnly": "pnpm check && pnpm build"
   },
   "keywords": [
     "mcp",

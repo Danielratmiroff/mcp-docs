@@ -1,9 +1,9 @@
-import { createDoc } from "../src/tools/create_doc.js";
-import { generateIndex } from "../src/tools/generate_index.js";
+import { createDoc } from "../src/tools/create_doc";
+import { generateIndex } from "../src/tools/generate_index";
 import { promises as fs } from "fs";
 import path from "path";
 
-jest.mock("../src/tools/generate_index.ts", () => ({
+jest.mock("../src/tools/generate_index", () => ({
   generateIndex: jest.fn(),
 }));
 

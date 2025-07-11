@@ -53,7 +53,7 @@ export function findProjectRoot(
   startDir: string = process.cwd(),
   markers: string[] = ["package.json", ".git", "pyproject.toml"]
 ): string | null {
-  let currentDir = startDir;
+  const currentDir = startDir;
 
   // Upward search
   let upwardDir: string | null = currentDir;
