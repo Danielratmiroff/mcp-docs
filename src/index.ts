@@ -1,23 +1,24 @@
 #!/usr/bin/env node
-import { createDoc } from "./tools/create_doc.js";
 import { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { similarity } from "ml-distance";
-import { deleteDoc } from "./tools/delete_doc.js";
-import { computeEmbedding, loadSearchIndex, MIN_SIMILARITY_SCORE, generateIndex } from "./tools/generate_index.js";
-import { logToFile, readDocumentationFile } from "./utils.js";
+import { computeEmbedding, loadSearchIndex, generateIndex } from "./tools/generate_index.js";
+import { readDocumentationFile } from "./utils.js";
 import { createCursorRule, createDataFolder, createDocumentationFolder, createEmbeddingsFile, createGeminiRule } from "./ai_rules.js";
+import path from "path";
+import { EMBEDDINGS_PATH, MIN_SIMILARITY_SCORE } from "./config.js";
 
 const server = new FastMCP({
   name: "contexto",
-  version: "1.0.0",
+  version: "0.2.0",
   instructions: `Use this server to retrieve the project's up-to-date documentation, best practices, 
     code examples, folder structure, project architecture, 
     and other relevant information that might be useful for fulfilling the user's request.`,
 });
 
 async function search(query: string, projectRoot: string, topMatches = 5) {
-  const embeddingData = await loadSearchIndex(projectRoot);
+  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+  const embeddingData = await loadSearchIndex(embeddingsPath);
   if (embeddingData.length === 0) {
     return [];
   }
@@ -61,13 +62,9 @@ server.addTool({
   execute: async ({ query, projectRoot }) => {
     const matches = await search(query, projectRoot);
     if (!matches.length) {
-      return {
-        content: [{ type: "text", text: `No matches found for the query: '${query}'.` }],
-      };
+      return `No matches found for the query: '${query}'.`;
     }
-    return {
-      content: [{ type: "text", text: JSON.stringify(matches, null, 2) }],
-    };
+    return JSON.stringify(matches, null, 2);
   },
 });
 
@@ -82,42 +79,11 @@ server.addTool({
   execute: async ({ filePath }) => {
     const content = await readDocumentationFile(filePath);
     if (!content) {
-      return {
-        content: [{ type: "text", text: `Could not read file: '${filePath}'.` }],
-      };
+      return `Could not read file: '${filePath}'.`;
     }
-    return {
-      content: [{ type: "text", text: content }],
-    };
+    return content;
   },
 });
-
-// server.addTool({
-//   name: "delete-doc",
-//   description:
-//     "Deletes a documentation file from the ai_docs folder and reindexes the embeddings so it is not accessible through other tools.",
-//   annotations: { title: "Delete AI Documentation File" },
-//   parameters: z.object({
-//     fileName: z.string().describe("Name of the documentation file to delete (with or without .md extension)."),
-//   }),
-//   execute: async ({ fileName }: { fileName: string }) => {
-//     try {
-//       // await deleteDoc(fileName);
-//       return {
-//         content: [{ type: "text", text: `Deleted '${fileName}' and reindexed documentation.` }],
-//       };
-//     } catch (error: any) {
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: `Error deleting file '${fileName}': ${error instanceof Error ? error.message : String(error)}`,
-//           },
-//         ],
-//       };
-//     }
-//   },
-// });
 
 server.addTool({
   name: "initialize",
@@ -136,9 +102,7 @@ server.addTool({
       generateIndex(projectRoot),
     ]);
 
-    return {
-      content: [{ type: "text", text: `messages: ${messages.join("\n")}` }],
-    };
+    return messages.join("\n");
   },
 });
 
@@ -154,35 +118,12 @@ server.addTool({
   },
 });
 
-// server.addTool({
-//   name: "create-doc",
-//   description: "Creates a new documentation file and re-indexes the documentation.",
-//   annotations: { title: "Create AI Documentation File" },
-//   parameters: z.object({
-//     fileName: z.string().describe("The name of the file to create."),
-//     content: z.string().describe("The content of the file."),
-//   }),
-//   execute: async ({ fileName, content }) => {
-//     // await createDoc(fileName, content);
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: `Successfully created and indexed '${fileName}'.`,
-//         },
-//       ],
-//     };
-//   },
-// });
-
 async function main() {
   await server.start({
     transportType: "stdio",
   });
-  // console.error("AI Docs MCP Server running on stdio");
 }
 
 main().catch((error) => {
-  // console.error("Fatal error in main():", error);
   process.exit(1);
 });

@@ -1,0 +1,50 @@
+[2025-07-12T17:54:33.518Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:55:09.831Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:55:10.428Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:55:26.647Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:57:07.260Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:57:32.802Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:57:55.535Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:58:12.662Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:58:34.046Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}
+[2025-07-12T17:58:56.766Z] {
+  "errno": -21,
+  "code": "EISDIR",
+  "syscall": "read"
+}

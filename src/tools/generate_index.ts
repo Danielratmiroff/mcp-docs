@@ -4,14 +4,7 @@ import { pipeline } from "@xenova/transformers";
 import { createHash } from "crypto";
 import { fileExists, logToFile } from "../utils.js";
 import { EmbeddingData } from "../types.js";
-
-export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
-export const MIN_SIMILARITY_SCORE = 0.4;
-
-export const AI_DOCS_DIR_NAME = "ai_docs";
-
-const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
-export const SUPPORTED_FILE_EXTENSIONS = [".md", ".txt"];
+import { AI_DOCS_DIR_NAME, EMBEDDINGS_PATH, MODEL_NAME, SUPPORTED_FILE_EXTENSIONS } from "../config.js";
 
 async function loadJSON<T>(filePath: string): Promise<T> {
   if (!(await fileExists(filePath))) {
@@ -30,17 +23,14 @@ function fileHasSupportedExtension(filePath: string): boolean {
   return SUPPORTED_FILE_EXTENSIONS.some((ext) => filePath.endsWith(ext));
 }
 
-export async function loadSearchIndex(projectRoot: string): Promise<EmbeddingData[]> {
-  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+export async function loadSearchIndex(embeddingsPath: string): Promise<EmbeddingData[]> {
   return await loadJSON<EmbeddingData[]>(embeddingsPath);
 }
 
-async function saveSearchIndex(embeddingData: EmbeddingData[], projectRoot: string): Promise<string> {
-  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+async function saveSearchIndex(embeddingData: EmbeddingData[], embeddingsPath: string): Promise<void> {
   const tempEmbeddingsPath = embeddingsPath + ".tmp";
   await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
   await fs.rename(tempEmbeddingsPath, embeddingsPath);
-  return embeddingsPath;
 }
 
 export async function computeEmbedding(content: string | string[]): Promise<number[][]> {
@@ -59,13 +49,14 @@ export function getFileHash(content: string): string {
  * - File modification: We check for file hashes to detect if the file has been modified.
  * - File addition & deletion: We check for file deletions.
  */
-export async function generateIndex(projectRoot: string): Promise<{ content: { type: "text"; text: string }[] }> {
-  const oldEmbeddingData = await loadSearchIndex(projectRoot);
+export async function generateIndex(projectRoot: string): Promise<string> {
+  const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+  const oldEmbeddingData = await loadSearchIndex(embeddingsPath);
   const oldEmbeddingMap = new Map(oldEmbeddingData.map((entry) => [entry.path, entry]));
 
   const aiFolderPath = path.join(projectRoot, AI_DOCS_DIR_NAME);
   if (!(await fileExists(aiFolderPath))) {
-    return { content: [{ type: "text", text: `No documentation directory found. Path: ${aiFolderPath}` }] };
+    return `No documentation directory found. Path: ${aiFolderPath}`;
   }
 
   const docFiles = await fs.readdir(aiFolderPath);
@@ -84,32 +75,33 @@ export async function generateIndex(projectRoot: string): Promise<{ content: { t
     // Check if the file has been modified
     if (oldEntry) {
       if (newHash === oldEntry.hash) {
+        // No changes detected
         finalEmbeddingData.push(oldEntry);
       } else {
+        // File has been modified
         modifiedCount++;
         filesToEmbed.push({ path: docFilePath, content });
       }
       oldEmbeddingMap.delete(docFilePath);
     } else {
+      // File has been added
       addedCount++;
       filesToEmbed.push({ path: docFilePath, content });
     }
   }
 
+  // Compute deleted count
   const deletedCount = oldEmbeddingMap.size;
-  const embeddingsPath2 = path.join(projectRoot, EMBEDDINGS_PATH); // TODO: remove this
 
+  // Set output logs
+  const outputInfo = `Documentation path: ${aiFolderPath}\nEmbeddings path: ${embeddingsPath}`;
+
+  // No changes detected
   if (addedCount === 0 && modifiedCount === 0 && deletedCount === 0) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `No changes detected in documentation.\nDocumentation path: ${aiFolderPath}\nEmbeddings path: ${embeddingsPath2}`,
-        },
-      ],
-    };
+    return `No changes detected in documentation.\n${outputInfo}`;
   }
 
+  // Compute new embeddings
   if (filesToEmbed.length > 0) {
     const contents = filesToEmbed.map((f) => f.content);
     const newEmbeddings = await computeEmbedding(contents);
@@ -120,16 +112,8 @@ export async function generateIndex(projectRoot: string): Promise<{ content: { t
     });
   }
 
-  const embeddingsPath = await saveSearchIndex(finalEmbeddingData, projectRoot);
+  // Save new embeddings
+  await saveSearchIndex(finalEmbeddingData, embeddingsPath);
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).
-        \nDocumentation path: ${aiFolderPath}
-        \nEmbeddings path: ${embeddingsPath}`,
-      },
-    ],
-  };
+  return `Successfully indexed ${addedCount} new, ${modifiedCount} modified, and removed ${deletedCount} deleted document(s).\n${outputInfo}`;
 }

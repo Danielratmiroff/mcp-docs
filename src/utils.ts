@@ -9,9 +9,7 @@ import { fileURLToPath } from "url";
  */
 export async function logToFile(message: string): Promise<void> {
   const logDir = path.join(process.cwd(), "logs");
-  if (!(await fileExists(logDir))) {
-    await fs.mkdir(logDir, { recursive: true });
-  }
+  await createDirectory(logDir);
   const timestamp = new Date().toISOString();
   const logFile = path.join(logDir, "mcp.log");
   await fs.appendFile(logFile, `[${timestamp}] ${message}\n`);
@@ -23,10 +21,33 @@ export async function logToFile(message: string): Promise<void> {
  * @returns True if the file exists, false otherwise.
  */
 export async function fileExists(filePath: string): Promise<boolean> {
-  return fs
-    .access(filePath)
-    .then(() => true)
-    .catch(() => false);
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Creates a file if it does not exist.
+ * @param filePath - The full path of the file to create.
+ * @param content - The content of the file to create.
+ */
+export async function createFile(filePath: string, content: string): Promise<void> {
+  if (!(await fileExists(filePath))) {
+    await fs.writeFile(filePath, content);
+  }
+}
+
+/**
+ * Creates a directory if it does not exist.
+ * @param dirPath - The full path of the directory to create.
+ */
+export async function createDirectory(dirPath: string): Promise<void> {
+  if (!(await fileExists(dirPath))) {
+    await fs.mkdir(dirPath, { recursive: true });
+  }
 }
 
 /**

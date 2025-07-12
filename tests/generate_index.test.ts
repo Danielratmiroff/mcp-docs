@@ -1,7 +1,6 @@
 import { strict as assert } from "assert";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { createHash } from "crypto";
 import { generateIndex, getFileHash } from "../src/tools/generate_index";
 
 jest.mock("fs/promises");
@@ -16,6 +15,10 @@ jest.mock("@xenova/transformers", () => ({
 
 const AI_DOCS_DIR = "ai_docs";
 const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
+const PROJECT_ROOT = ".";
+const aiFolderPath = path.join(PROJECT_ROOT, AI_DOCS_DIR);
+const embeddingsPath = path.join(PROJECT_ROOT, EMBEDDINGS_PATH);
+const outputInfo = `Documentation path: ${aiFolderPath}\nEmbeddings path: ${embeddingsPath}`;
 
 describe("generate-index", () => {
   beforeEach(() => {
@@ -40,7 +43,7 @@ describe("generate-index", () => {
   it("should handle no changes", async () => {
     const existingContent = "existing content";
     const existingHash = getFileHash(existingContent);
-    const docPath = path.join(AI_DOCS_DIR, "existing.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["existing.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -54,13 +57,13 @@ describe("generate-index", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await generateIndex();
-    assert.deepStrictEqual(result, { content: [{ type: "text", text: "No changes detected in documentation." }] });
+    const result = await generateIndex(PROJECT_ROOT);
+    assert.strictEqual(result, `No changes detected in documentation.\n${outputInfo}`);
   });
 
   it("should handle adding a new file", async () => {
     const newContent = "new content";
-    const docPath = path.join(AI_DOCS_DIR, "new.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "new.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["new.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -74,10 +77,8 @@ describe("generate-index", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await generateIndex();
-    assert.deepStrictEqual(result, {
-      content: [{ type: "text", text: "Successfully indexed 1 new, 0 modified, and removed 0 deleted document(s)." }],
-    });
+    const result = await generateIndex(PROJECT_ROOT);
+    assert.strictEqual(result, `Successfully indexed 1 new, 0 modified, and removed 0 deleted document(s).\n${outputInfo}`);
     // Check if writeFile was called with correct data
     expect(fs.writeFile).toHaveBeenCalledWith(
       expect.stringContaining(EMBEDDINGS_PATH + ".tmp"),
@@ -86,7 +87,7 @@ describe("generate-index", () => {
   });
 
   it("should handle deleting a file", async () => {
-    const docPath = path.join(AI_DOCS_DIR, "existing.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       const fPath = filePath.toString();
       if (fPath.endsWith(EMBEDDINGS_PATH)) {
@@ -96,10 +97,8 @@ describe("generate-index", () => {
     });
     (fs.readdir as jest.Mock).mockResolvedValue([]); // Now it's gone
 
-    const result = await generateIndex();
-    assert.deepStrictEqual(result, {
-      content: [{ type: "text", text: "Successfully indexed 0 new, 0 modified, and removed 1 deleted document(s)." }],
-    });
+    const result = await generateIndex(PROJECT_ROOT);
+    assert.strictEqual(result, `Successfully indexed 0 new, 0 modified, and removed 1 deleted document(s).\n${outputInfo}`);
     // Check if writeFile was called with empty data
     expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining(EMBEDDINGS_PATH + ".tmp"), JSON.stringify([]));
   });
@@ -107,7 +106,7 @@ describe("generate-index", () => {
   it("should handle modifying a file", async () => {
     const modifiedContent = "modified content";
     const newHash = getFileHash(modifiedContent);
-    const docPath = path.join(AI_DOCS_DIR, "modified.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "modified.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["modified.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -121,10 +120,8 @@ describe("generate-index", () => {
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
     });
 
-    const result = await generateIndex();
-    assert.deepStrictEqual(result, {
-      content: [{ type: "text", text: "Successfully indexed 0 new, 1 modified, and removed 0 deleted document(s)." }],
-    });
+    const result = await generateIndex(PROJECT_ROOT);
+    assert.strictEqual(result, `Successfully indexed 0 new, 1 modified, and removed 0 deleted document(s).\n${outputInfo}`);
     // Check if writeFile was called with updated data
     expect(fs.writeFile).toHaveBeenCalledWith(
       expect.stringContaining(EMBEDDINGS_PATH + ".tmp"),
@@ -135,16 +132,16 @@ describe("generate-index", () => {
   it("should handle a mix of additions, modifications, and deletions", async () => {
     const existingContent = "existing content";
     const existingHash = getFileHash(existingContent);
-    const existingPath = path.join(AI_DOCS_DIR, "existing.md");
+    const existingPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
 
     const modifiedContent = "modified content";
     const modifiedNewHash = getFileHash(modifiedContent);
-    const modifiedPath = path.join(AI_DOCS_DIR, "modified.md");
+    const modifiedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "modified.md");
 
-    const deletedPath = path.join(AI_DOCS_DIR, "deleted.md");
+    const deletedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "deleted.md");
 
     const newContent = "new content";
-    const newPath = path.join(AI_DOCS_DIR, "new.md");
+    const newPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "new.md");
 
     // Initial state in embeddings.json
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -165,10 +162,8 @@ describe("generate-index", () => {
     // State of the directory
     (fs.readdir as jest.Mock).mockResolvedValue(["existing.md", "modified.md", "new.md"]);
 
-    const result = await generateIndex();
-    assert.deepStrictEqual(result, {
-      content: [{ type: "text", text: "Successfully indexed 1 new, 1 modified, and removed 1 deleted document(s)." }],
-    });
+    const result = await generateIndex(PROJECT_ROOT);
+    assert.strictEqual(result, `Successfully indexed 1 new, 1 modified, and removed 1 deleted document(s).\n${outputInfo}`);
 
     // Check the final state written to the file
     const expectedData = [

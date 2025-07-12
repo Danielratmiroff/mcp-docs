@@ -1,31 +1,74 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { createCursorRule, createGeminiRule } from "../src/ai_rules";
+import {
+  createCursorRule,
+  createDataFolder,
+  createDocumentationFolder,
+  createEmbeddingsFile,
+  createGeminiRule,
+} from "../src/ai_rules";
+import {
+  AI_DOCS_MCP_DESCRIPTION,
+  CONTEXTO_GEMINI_FILE_NAME,
+  CURSOR_RULES_FILE_NAME,
+  DATA_DIR_NAME,
+  EMBEDDINGS_PATH,
+  AI_DOCS_DIR_NAME,
+  CURSOR_DIR_NAME,
+  CURSOR_RULES_DIR_NAME,
+  GEMINI_DIR_NAME,
+  GEMINI_SETTINGS_FILE_NAME,
+  GEMINI_CONTEXT_FILE_NAME,
+} from "../src/config";
+import { createDirectory, createFile, fileExists } from "../src/utils";
 
 jest.mock("fs/promises");
+jest.mock("../src/utils");
 
-const AI_DOCS_MCP_DESCRIPTION = `
-# CONTEXTO MCP
-
-You MUST use the 'CONTEXTO' MCP TOOL KIT to retrieve the project's up-to-date documentation, best practices,
-code examples, folder structure, project architecture,
-and other relevant information that might be useful for fulfilling the user's request.
-
-You should ALWAYS consult the 'CONTEXTO' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.
-`;
+const mockedFileExists = fileExists as jest.Mock;
+const mockedCreateDirectory = createDirectory as jest.Mock;
+const mockedCreateFile = createFile as jest.Mock;
+const mockedFsReadFile = fs.readFile as jest.Mock;
+const mockedFsWriteFile = fs.writeFile as jest.Mock;
 
 const projectRoot = path.join(__dirname, "..");
 
 describe("AI Rules", () => {
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
+  });
+
+  describe("createDataFolder", () => {
+    it("should call createDirectory with the correct data folder path", async () => {
+      const dataDir = path.join(projectRoot, DATA_DIR_NAME);
+      const result = await createDataFolder(projectRoot);
+      expect(mockedCreateDirectory).toHaveBeenCalledWith(dataDir);
+      expect(result).toBe(`Successfully created ${dataDir}`);
+    });
+  });
+
+  describe("createDocumentationFolder", () => {
+    it("should call createDirectory with the correct docs folder path", async () => {
+      const aiDocsDir = path.join(projectRoot, AI_DOCS_DIR_NAME);
+      const result = await createDocumentationFolder(projectRoot);
+      expect(mockedCreateDirectory).toHaveBeenCalledWith(aiDocsDir);
+      expect(result).toBe(`Successfully created ${aiDocsDir}`);
+    });
+  });
+
+  describe("createEmbeddingsFile", () => {
+    it("should call createFile with the correct embeddings file path", async () => {
+      const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
+      const result = await createEmbeddingsFile(projectRoot);
+      expect(mockedCreateFile).toHaveBeenCalledWith(embeddingsPath, "[]");
+      expect(result).toBe(`Successfully created ${embeddingsPath}`);
+    });
   });
 
   describe("createCursorRule", () => {
     it("should create the .cursor/rules directory and the rule file", async () => {
-      const rulesDir = path.join(projectRoot, ".cursor", "rules");
-      const ruleFilePath = path.join(rulesDir, "mcp-contexto.mdc");
+      const rulesDir = path.join(projectRoot, CURSOR_DIR_NAME, CURSOR_RULES_DIR_NAME);
+      const ruleFilePath = path.join(rulesDir, CURSOR_RULES_FILE_NAME);
       const expectedContent = `---
 alwaysApply: true
 ---
@@ -33,105 +76,103 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
 
       const result = await createCursorRule(projectRoot);
 
-      // Verify directory creation
-      expect(fs.mkdir).toHaveBeenCalledWith(rulesDir, { recursive: true });
-
-      // Verify file creation with correct content
-      expect(fs.writeFile).toHaveBeenCalledWith(ruleFilePath, expectedContent);
-
-      // Verify success message
+      expect(mockedCreateDirectory).toHaveBeenCalledWith(rulesDir);
+      expect(mockedCreateFile).toHaveBeenCalledWith(ruleFilePath, expectedContent);
       expect(result).toBe(`Successfully created ${ruleFilePath}`);
     });
   });
 
   describe("createGeminiRule", () => {
-    const geminiDir = path.join(projectRoot, ".gemini");
-    const settingsPath = path.join(geminiDir, "settings.json");
-    const ruleFilePath = path.join(projectRoot, "CONTEXTO_GEMINI.md");
+    const geminiDir = path.join(projectRoot, GEMINI_DIR_NAME);
+    const settingsPath = path.join(geminiDir, GEMINI_SETTINGS_FILE_NAME);
+    const ruleFilePath = path.join(projectRoot, CONTEXTO_GEMINI_FILE_NAME);
 
-    it("should create .gemini dir, settings.json, and CONTEXTO_GEMINI.md if none exist", async () => {
-      // Mock fs.access to throw ENOENT, simulating file not found
-      (fs.access as jest.Mock).mockRejectedValue({ code: "ENOENT" });
+    describe("when settings.json does not exist", () => {
+      it("should create .gemini dir, settings.json with defaults, and CONTEXTO_GEMINI.md", async () => {
+        mockedFileExists.mockResolvedValue(false);
 
-      const defaultSettings = {
-        contextFileName: ["GEMINI.md", "CONTEXTO_GEMINI.md"],
-      };
+        const defaultSettings = {
+          contextFileName: [GEMINI_CONTEXT_FILE_NAME, CONTEXTO_GEMINI_FILE_NAME],
+        };
 
-      const result = await createGeminiRule(projectRoot);
+        const result = await createGeminiRule(projectRoot);
 
-      // Verify directory creation
-      expect(fs.mkdir).toHaveBeenCalledWith(geminiDir, { recursive: true });
-
-      // Verify settings.json was created with default content
-      expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(defaultSettings, null, 2));
-
-      // Verify the rule file was created with the correct description
-      expect(fs.writeFile).toHaveBeenCalledWith(ruleFilePath, AI_DOCS_MCP_DESCRIPTION);
-
-      // Verify success message
-      expect(result).toBe(`Successfully created ${ruleFilePath}`);
+        expect(mockedCreateDirectory).toHaveBeenCalledWith(geminiDir);
+        expect(mockedFileExists).toHaveBeenCalledWith(settingsPath);
+        expect(mockedCreateFile).toHaveBeenCalledWith(
+          settingsPath,
+          JSON.stringify(defaultSettings, null, 2)
+        );
+        expect(mockedCreateFile).toHaveBeenCalledWith(ruleFilePath, AI_DOCS_MCP_DESCRIPTION);
+        expect(result).toBe(`Successfully created ${ruleFilePath}`);
+        expect(mockedFsReadFile).not.toHaveBeenCalled();
+        expect(mockedFsWriteFile).not.toHaveBeenCalled();
+      });
     });
 
-    it("should update settings.json if it exists but has no contextFileName", async () => {
-      // Mock fs.access to resolve, simulating file exists
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      // Mock readFile to return an empty JSON object
-      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({}));
+    describe("when settings.json exists", () => {
+      it("should update settings.json if it has no contextFileName", async () => {
+        mockedFileExists.mockResolvedValue(true);
+        mockedFsReadFile.mockResolvedValue(JSON.stringify({}));
 
-      const expectedConfig = {
-        contextFileName: ["CONTEXTO_GEMINI.md"],
-      };
+        const expectedConfig = {
+          contextFileName: [CONTEXTO_GEMINI_FILE_NAME],
+        };
 
-      await createGeminiRule(projectRoot);
+        await createGeminiRule(projectRoot);
 
-      expect(fs.readFile).toHaveBeenCalledWith(settingsPath, "utf-8");
-      expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
-    });
+        expect(mockedCreateDirectory).toHaveBeenCalledWith(geminiDir);
+        expect(mockedFsReadFile).toHaveBeenCalledWith(settingsPath, "utf-8");
+        expect(mockedFsWriteFile).toHaveBeenCalledWith(
+          settingsPath,
+          JSON.stringify(expectedConfig, null, 2)
+        );
+        expect(mockedCreateFile).toHaveBeenCalledWith(ruleFilePath, AI_DOCS_MCP_DESCRIPTION);
+      });
 
-    it("should add CONTEXTO_GEMINI.md to an existing string contextFileName", async () => {
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({ contextFileName: "some-file.md" }));
+      it("should add to string contextFileName", async () => {
+        mockedFileExists.mockResolvedValue(true);
+        mockedFsReadFile.mockResolvedValue(JSON.stringify({ contextFileName: "file.md" }));
 
-      const expectedConfig = {
-        contextFileName: ["some-file.md", "CONTEXTO_GEMINI.md"],
-      };
+        const expectedConfig = {
+          contextFileName: ["file.md", CONTEXTO_GEMINI_FILE_NAME],
+        };
 
-      await createGeminiRule(projectRoot);
+        await createGeminiRule(projectRoot);
+        expect(mockedFsWriteFile).toHaveBeenCalledWith(
+          settingsPath,
+          JSON.stringify(expectedConfig, null, 2)
+        );
+      });
 
-      expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
-    });
+      it("should add to array contextFileName", async () => {
+        mockedFileExists.mockResolvedValue(true);
+        mockedFsReadFile.mockResolvedValue(JSON.stringify({ contextFileName: ["file.md"] }));
 
-    it("should add CONTEXTO_GEMINI.md to an existing array contextFileName", async () => {
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({ contextFileName: ["existing.md"] }));
+        const expectedConfig = {
+          contextFileName: ["file.md", CONTEXTO_GEMINI_FILE_NAME],
+        };
 
-      const expectedConfig = {
-        contextFileName: ["existing.md", "CONTEXTO_GEMINI.md"],
-      };
+        await createGeminiRule(projectRoot);
+        expect(mockedFsWriteFile).toHaveBeenCalledWith(
+          settingsPath,
+          JSON.stringify(expectedConfig, null, 2)
+        );
+      });
 
-      await createGeminiRule(projectRoot);
+      it("should not add a duplicate", async () => {
+        const initialConfig = {
+          contextFileName: ["file.md", CONTEXTO_GEMINI_FILE_NAME],
+        };
+        mockedFileExists.mockResolvedValue(true);
+        mockedFsReadFile.mockResolvedValue(JSON.stringify(initialConfig));
 
-      expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
-    });
-
-    it("should not add a duplicate if CONTEXTO_GEMINI.md already exists in the array", async () => {
-      const initialConfig = {
-        contextFileName: ["existing.md", "CONTEXTO_GEMINI.md"],
-      };
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(initialConfig));
-
-      await createGeminiRule(projectRoot);
-
-      // The config should not be changed
-      expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(initialConfig, null, 2));
-    });
-
-    it("should throw an error if fs.access rejects with an error other than ENOENT", async () => {
-      const someError = new Error("EACCES: permission denied");
-      (fs.access as jest.Mock).mockRejectedValue(someError);
-
-      await expect(createGeminiRule(projectRoot)).rejects.toThrow("EACCES: permission denied");
+        await createGeminiRule(projectRoot);
+        expect(mockedFsWriteFile).toHaveBeenCalledWith(
+          settingsPath,
+          JSON.stringify(initialConfig, null, 2)
+        );
+      });
     });
   });
 });

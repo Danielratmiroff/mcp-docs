@@ -7,4 +7,5 @@ and other relevant information that might be useful for fulfilling the user's re
 
 You should ALWAYS consult the 'CONTEXTO' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.
 
+Assume ai_docs is the folder where the documentation is stored, unless the user specifies otherwise.
 You MUST generate a new index of the documentation every time you create, modify, or delete a file in the ai_docs folder.
