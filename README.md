@@ -9,23 +9,6 @@ Contexto is a Model Context Protocol (MCP) documentation server that makes your 
 - **Documentation Management:** Empower AI assistants to easily create, read, and delete documentation files.
 - **AI Integration:** Sets up configuration files to seamlessly connect with AI tools like Cursor and Gemini.
 
-## How to Use 🔍
-
-Contexto pulls your up-to-date documentation and uses it as context for your LLM prompt.
-
-1. Write your prompt naturally.
-2. The AI will determine if it needs to use Contexto to anwser your question more effectively.
-
-or enforce the use of Contexto by appending "use contexto" to your prompt.
-
-Examples:
-
-```text
-Create a Next.js middleware for JWT authentication with cookie validation and login redirect. use contexto
-```
-
-No manual searches, no outdated code, just real-time docs in your context.
-
 ## Installation 🚀
 
 ### Requirements
@@ -84,6 +67,41 @@ Open or create `~/.gemini/settings.json` or your project's `.gemini/settings.jso
 ```bash
 claude mcp add contexto -- npx -y contexto
 ```
+
+## Getting Started 🚀
+
+Ask the AI to initalize Contexto.
+
+```text
+Initialize Contexto
+```
+
+The AI will then:
+
+- Create a new documentation folder in the root of your project. (default: `docs`)
+- Create a new embeddings file in the root of your project. (default: `data/embeddings.json`)
+- Create a new rule files in the root of your project.
+  - Cursor: `.cursor/rules/mcp-contexto.mdc` (default)
+  - Gemini: `.gemini/settings.json` and `CONTEXTO_GEMINI.md` (default)
+
+> Rules are used to guide the AI when using Contexto.
+
+## How to Use 🔍
+
+Contexto pulls your up-to-date documentation and uses it as context for your LLM prompt.
+
+1. Write your prompt naturally.
+2. The AI will determine if it needs to use Contexto to answer your question more effectively.
+
+or enforce the use of Contexto by appending "use contexto" to your prompt.
+
+Examples:
+
+```text
+Create a new API endpoint for user authentication. use contexto
+```
+
+No manual searches, no outdated code, just real-time docs in your context.
 
 ## Contributing 🤝
 
