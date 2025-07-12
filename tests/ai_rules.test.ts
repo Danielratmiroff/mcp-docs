@@ -1,7 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { createCursorRule, createGeminiRule } from "../src/ai_rules";
-import { findProjectRoot } from "../src/utils";
 
 jest.mock("fs/promises");
 
@@ -15,12 +14,9 @@ and other relevant information that might be useful for fulfilling the user's re
 You should ALWAYS consult the 'CONTEXTO' MCP documentation when you are unsure or have a question about the project's architecture, best practices, or other relevant information.
 `;
 
-describe("AI Rules", () => {
-  const projectRoot = findProjectRoot();
-  if (!projectRoot) {
-    throw new Error("Failed to find project root.");
-  }
+const projectRoot = path.join(__dirname, "..");
 
+describe("AI Rules", () => {
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -35,7 +31,7 @@ alwaysApply: true
 ---
 ${AI_DOCS_MCP_DESCRIPTION}`;
 
-      const result = await createCursorRule();
+      const result = await createCursorRule(projectRoot);
 
       // Verify directory creation
       expect(fs.mkdir).toHaveBeenCalledWith(rulesDir, { recursive: true });
@@ -61,7 +57,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
         contextFileName: ["GEMINI.md", "CONTEXTO_GEMINI.md"],
       };
 
-      const result = await createGeminiRule();
+      const result = await createGeminiRule(projectRoot);
 
       // Verify directory creation
       expect(fs.mkdir).toHaveBeenCalledWith(geminiDir, { recursive: true });
@@ -86,7 +82,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
         contextFileName: ["CONTEXTO_GEMINI.md"],
       };
 
-      await createGeminiRule();
+      await createGeminiRule(projectRoot);
 
       expect(fs.readFile).toHaveBeenCalledWith(settingsPath, "utf-8");
       expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
@@ -100,7 +96,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
         contextFileName: ["some-file.md", "CONTEXTO_GEMINI.md"],
       };
 
-      await createGeminiRule();
+      await createGeminiRule(projectRoot);
 
       expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
     });
@@ -113,7 +109,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
         contextFileName: ["existing.md", "CONTEXTO_GEMINI.md"],
       };
 
-      await createGeminiRule();
+      await createGeminiRule(projectRoot);
 
       expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(expectedConfig, null, 2));
     });
@@ -125,7 +121,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(initialConfig));
 
-      await createGeminiRule();
+      await createGeminiRule(projectRoot);
 
       // The config should not be changed
       expect(fs.writeFile).toHaveBeenCalledWith(settingsPath, JSON.stringify(initialConfig, null, 2));
@@ -135,7 +131,7 @@ ${AI_DOCS_MCP_DESCRIPTION}`;
       const someError = new Error("EACCES: permission denied");
       (fs.access as jest.Mock).mockRejectedValue(someError);
 
-      await expect(createGeminiRule()).rejects.toThrow("EACCES: permission denied");
+      await expect(createGeminiRule(projectRoot)).rejects.toThrow("EACCES: permission denied");
     });
   });
 });

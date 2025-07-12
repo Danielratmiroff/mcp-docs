@@ -8,11 +8,7 @@ import { fileURLToPath } from "url";
  * @param message - The message to log.
  */
 export async function logToFile(message: string): Promise<void> {
-  const projectRoot = findProjectRoot();
-  if (!projectRoot) {
-    throw new Error("Failed to find project root.");
-  }
-  const logDir = path.join(projectRoot, "logs");
+  const logDir = path.join(process.cwd(), "logs");
   if (!(await fileExists(logDir))) {
     await fs.mkdir(logDir, { recursive: true });
   }
@@ -43,35 +39,5 @@ export async function readDocumentationFile(filePath: string): Promise<string> {
     return await fs.readFile(filePath, "utf-8");
   } catch (error) {
     return "";
-  }
-}
-
-/**
- * Recursively searches for a project root starting from a given directory.
- * It can search both upwards and downwards.
- * @param startDir The directory to start searching from.
- * @param markers An array of file or directory names that mark a project root.
- * @returns The path to the project root, or null if not found.
- */
-export function findProjectRoot(
-  /** We start from the directory of the compiled file that imports this helper. */
-  startDir: string = path.dirname(fileURLToPath(import.meta.url)),
-  markers: string[] = ["package.json", ".git"]
-): string | null {
-  let dir = path.resolve(startDir);
-
-  while (true) {
-    for (const marker of markers) {
-      if (fsSync.existsSync(path.join(dir, marker))) {
-        return dir;
-      }
-    }
-
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      throw new Error("No project root found");
-    }
-
-    dir = parent;
   }
 }

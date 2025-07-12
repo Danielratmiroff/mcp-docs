@@ -2,13 +2,14 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { pipeline } from "@xenova/transformers";
 import { createHash } from "crypto";
-import { fileExists, logToFile, findProjectRoot } from "../utils.js";
+import { fileExists, logToFile } from "../utils.js";
 import { EmbeddingData } from "../types.js";
 
 export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 export const MIN_SIMILARITY_SCORE = 0.4;
 
-const AI_DOCS_DIR_NAME = "ai_docs";
+export const AI_DOCS_DIR_NAME = "ai_docs";
+
 const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
 export const SUPPORTED_FILE_EXTENSIONS = [".md", ".txt"];
 
@@ -29,20 +30,12 @@ function fileHasSupportedExtension(filePath: string): boolean {
   return SUPPORTED_FILE_EXTENSIONS.some((ext) => filePath.endsWith(ext));
 }
 
-export async function loadSearchIndex(): Promise<EmbeddingData[]> {
-  const projectRoot = findProjectRoot();
-  if (!projectRoot) {
-    throw new Error("Failed to find project root.");
-  }
+export async function loadSearchIndex(projectRoot: string): Promise<EmbeddingData[]> {
   const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
   return await loadJSON<EmbeddingData[]>(embeddingsPath);
 }
 
-async function saveSearchIndex(embeddingData: EmbeddingData[]): Promise<string> {
-  const projectRoot = findProjectRoot();
-  if (!projectRoot) {
-    throw new Error("Failed to find project root.");
-  }
+async function saveSearchIndex(embeddingData: EmbeddingData[], projectRoot: string): Promise<string> {
   const embeddingsPath = path.join(projectRoot, EMBEDDINGS_PATH);
   const tempEmbeddingsPath = embeddingsPath + ".tmp";
   await fs.writeFile(tempEmbeddingsPath, JSON.stringify(embeddingData));
@@ -66,14 +59,9 @@ export function getFileHash(content: string): string {
  * - File modification: We check for file hashes to detect if the file has been modified.
  * - File addition & deletion: We check for file deletions.
  */
-export async function generateIndex(): Promise<{ content: { type: "text"; text: string }[] }> {
-  const oldEmbeddingData = await loadSearchIndex();
+export async function generateIndex(projectRoot: string): Promise<{ content: { type: "text"; text: string }[] }> {
+  const oldEmbeddingData = await loadSearchIndex(projectRoot);
   const oldEmbeddingMap = new Map(oldEmbeddingData.map((entry) => [entry.path, entry]));
-
-  const projectRoot = findProjectRoot();
-  if (!projectRoot) {
-    throw new Error("Failed to find project root.");
-  }
 
   const aiFolderPath = path.join(projectRoot, AI_DOCS_DIR_NAME);
   if (!(await fileExists(aiFolderPath))) {
@@ -132,7 +120,7 @@ export async function generateIndex(): Promise<{ content: { type: "text"; text: 
     });
   }
 
-  const embeddingsPath = await saveSearchIndex(finalEmbeddingData);
+  const embeddingsPath = await saveSearchIndex(finalEmbeddingData, projectRoot);
 
   return {
     content: [
