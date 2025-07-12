@@ -16,10 +16,9 @@
     "start": "node --loader ts-node/esm ./src/index.ts",
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector node --loader ts-node/esm ./src/index.ts",
     "test": "jest",
-    "lint": "pnpm eslint",
+    "lint": "eslint .",
     "check": "pnpm test && pnpm lint",
-    "prepare": "pnpm test",
-    "precommit": "pnpm check && pnpm build",
+    "prepare": "pnpm check",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [
