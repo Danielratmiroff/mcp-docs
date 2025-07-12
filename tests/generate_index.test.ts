@@ -2,21 +2,20 @@ import { strict as assert } from "assert";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { generateIndex, getFileHash } from "../src/tools/generate_index";
+import { AI_DOCS_DIR_NAME, EMBEDDINGS_PATH } from "../src/config";
 
 jest.mock("fs/promises");
 jest.mock("@xenova/transformers", () => ({
   pipeline: jest.fn().mockResolvedValue(async (content: string | string[]) => {
     if (Array.isArray(content)) {
-      return { tolist: () => content.map((c, i) => [i + 1]) };
+      return { tolist: () => content.map((_, i) => [i + 1]) };
     }
     return { tolist: () => [[1]] };
   }),
 }));
 
-const AI_DOCS_DIR = "ai_docs";
-const EMBEDDINGS_PATH = path.join("data", "embeddings.json");
 const PROJECT_ROOT = ".";
-const aiFolderPath = path.join(PROJECT_ROOT, AI_DOCS_DIR);
+const aiFolderPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME);
 const embeddingsPath = path.join(PROJECT_ROOT, EMBEDDINGS_PATH);
 const outputInfo = `Documentation path: ${aiFolderPath}\nEmbeddings path: ${embeddingsPath}`;
 
@@ -30,7 +29,7 @@ describe("generate-index", () => {
       if (fPath.endsWith(EMBEDDINGS_PATH)) {
         return JSON.stringify([]);
       }
-      if (fPath.includes(AI_DOCS_DIR)) {
+      if (fPath.includes(AI_DOCS_DIR_NAME)) {
         return "";
       }
       throw new Error(`ENOENT: no such file or directory, open '${fPath}'`);
@@ -43,7 +42,7 @@ describe("generate-index", () => {
   it("should handle no changes", async () => {
     const existingContent = "existing content";
     const existingHash = getFileHash(existingContent);
-    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "existing.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["existing.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -63,7 +62,7 @@ describe("generate-index", () => {
 
   it("should handle adding a new file", async () => {
     const newContent = "new content";
-    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "new.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "new.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["new.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -87,7 +86,7 @@ describe("generate-index", () => {
   });
 
   it("should handle deleting a file", async () => {
-    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "existing.md");
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       const fPath = filePath.toString();
       if (fPath.endsWith(EMBEDDINGS_PATH)) {
@@ -106,7 +105,7 @@ describe("generate-index", () => {
   it("should handle modifying a file", async () => {
     const modifiedContent = "modified content";
     const newHash = getFileHash(modifiedContent);
-    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "modified.md");
+    const docPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "modified.md");
 
     (fs.readdir as jest.Mock).mockResolvedValue(["modified.md"]);
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -132,16 +131,16 @@ describe("generate-index", () => {
   it("should handle a mix of additions, modifications, and deletions", async () => {
     const existingContent = "existing content";
     const existingHash = getFileHash(existingContent);
-    const existingPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "existing.md");
+    const existingPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "existing.md");
 
     const modifiedContent = "modified content";
     const modifiedNewHash = getFileHash(modifiedContent);
-    const modifiedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "modified.md");
+    const modifiedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "modified.md");
 
-    const deletedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "deleted.md");
+    const deletedPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "deleted.md");
 
     const newContent = "new content";
-    const newPath = path.join(PROJECT_ROOT, AI_DOCS_DIR, "new.md");
+    const newPath = path.join(PROJECT_ROOT, AI_DOCS_DIR_NAME, "new.md");
 
     // Initial state in embeddings.json
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
@@ -173,7 +172,7 @@ describe("generate-index", () => {
     ].sort((a, b) => a.path.localeCompare(b.path));
 
     const writeFileCall = (fs.writeFile as jest.Mock).mock.calls[0];
-    const actualData = JSON.parse(writeFileCall[1]).sort((a: any, b: any) => a.path.localeCompare(b.path));
+    const actualData = JSON.parse(writeFileCall[1]).sort((a: { path: string }, b: { path: string }) => a.path.localeCompare(b.path));
 
     expect(writeFileCall[0]).toContain(EMBEDDINGS_PATH + ".tmp");
     expect(actualData).toEqual(expectedData);

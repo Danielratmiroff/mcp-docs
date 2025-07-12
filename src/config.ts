@@ -5,7 +5,7 @@ export const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 export const MIN_SIMILARITY_SCORE = 0.4;
 
 // AI Docs config
-export const AI_DOCS_DIR_NAME = "ai_docs";
+export const AI_DOCS_DIR_NAME = "docs";
 export const DATA_DIR_NAME = "data";
 export const EMBEDDINGS_FILE_NAME = "embeddings.json";
 

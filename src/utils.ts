@@ -1,7 +1,5 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as fsSync from "fs";
-import { fileURLToPath } from "url";
 
 /**
  * Logs a message to a file.
@@ -58,7 +56,7 @@ export async function createDirectory(dirPath: string): Promise<void> {
 export async function readDocumentationFile(filePath: string): Promise<string> {
   try {
     return await fs.readFile(filePath, "utf-8");
-  } catch (error) {
+  } catch {
     return "";
   }
 }
